@@ -10,7 +10,19 @@
  */
 
 import * as THREE from 'three';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { Owner, PieceType } from '../engine/types';
+
+/**
+ * Ángulo a partir del cual una arista del torneado se considera viva.
+ *
+ * LatheGeometry promedia las normales entre segmentos vecinos del perfil, así
+ * que los filetes y las gargantas —que en madera torneada son aristas netas—
+ * salían redondeados y las piezas parecían de cera. `toCreasedNormals` parte
+ * la normal donde el quiebre supera este umbral: la curva sigue suave y el
+ * filete vuelve a marcarse.
+ */
+const ARISTA_VIVA = THREE.MathUtils.degToRad(32);
 
 /** 'neutral' es la Divinidad: marfil con el globo azul de la lámina en color. */
 export type PieceOwner = Owner | 'neutral';
@@ -66,7 +78,7 @@ function mats(owner: PieceOwner, palette: PiecePalette): Mats {
 
 function lathe(points: [number, number][], mat: THREE.Material, segments = 36): THREE.Mesh {
   const pts = points.map(([x, y]) => new THREE.Vector2(x, y));
-  const mesh = new THREE.Mesh(new THREE.LatheGeometry(pts, segments), mat);
+  const mesh = new THREE.Mesh(toCreasedNormals(new THREE.LatheGeometry(pts, segments), ARISTA_VIVA), mat);
   mesh.castShadow = true;
   return mesh;
 }
