@@ -16,6 +16,8 @@ import { isMuted, setMuted, sfx } from './ui3d/sound';
 type Mode = 'ai' | 'hotseat';
 const HUMAN: Owner = 'rojo';
 const SAVE_KEY = 'el-olimpo-partida';
+/** Subir esto cuando cambie la forma de GameState: invalida las partidas viejas. */
+const SAVE_VERSION = 1;
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -167,27 +169,42 @@ function announceResult(r: GameResult): void {
 
 function save(): void {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ state, mode, difficulty }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ v: SAVE_VERSION, state, mode, difficulty }));
   } catch {
     /* almacenamiento no disponible: se juega sin guardar */
   }
 }
 
+/**
+ * Lee la partida guardada, o null si no hay ninguna utilizable.
+ *
+ * El formato lleva versión porque el estado se serializa tal cual: cualquier
+ * cambio de forma en GameState deja las partidas viejas incompatibles, y sin
+ * un número que lo detecte se cargaban igual y rompían en medio del juego.
+ * Ante una versión desconocida se descarta la partida en vez de arriesgar un
+ * estado corrupto; es mejor perder una partida que colgar el tablero.
+ */
 function loadSave(): { state: GameState; mode: Mode; difficulty: number } | null {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (!data?.state?.pieces) return null;
-    // Partidas guardadas antes de corregir la ortografía traen el campo con el
-    // nombre viejo; sin esto, canjear en una partida retomada tiraba
-    // TypeError al escribir sobre un objeto inexistente.
-    const s = data.state;
-    if (!s.canjeUsado && s.cangeoUsado) {
-      s.canjeUsado = s.cangeoUsado;
-      delete s.cangeoUsado;
+
+    if (data.v === undefined) {
+      // generación anterior al versionado: trae cangeoUsado con la ortografía
+      // vieja. Sin esto, canjear en una partida retomada tiraba TypeError al
+      // escribir sobre un objeto inexistente.
+      const s = data.state;
+      if (!s.canjeUsado && s.cangeoUsado) {
+        s.canjeUsado = s.cangeoUsado;
+        delete s.cangeoUsado;
+      }
+      if (!s.canjeUsado) return null;
+      data.v = SAVE_VERSION;
     }
-    if (!s.canjeUsado) return null;
+    if (data.v !== SAVE_VERSION) return null;
+
     return data;
   } catch {
     return null;
