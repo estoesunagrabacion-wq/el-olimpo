@@ -38,6 +38,11 @@ const COL_MERIDIANA = 0x9e2f2f;
  */
 export type BoardStyle = 'lamina' | 'moderno';
 
+/** Junta entre losetas del estilo 'moderno': marca la división de casillas. */
+const COL_JUNTA = 0x241a10;
+/** Cuánto se achica cada loseta por lado para dejar ver la junta. */
+const TILE_INSET = 0.45;
+
 const MODERNO_RING_COLORS: [number, number][] = [
   [0xefe2b8, 0xece0c4], // Regiones
   [0xc7dbd6, 0xdbe9e5], // Tiempo
@@ -247,13 +252,17 @@ export class Board3D {
     this.scene.add(rimInner);
   }
 
-  private cellShape(cell: Cell): THREE.Shape {
+  /** Con `inset` la casilla se achica por los cuatro lados, dejando junta. */
+  private cellShape(cell: Cell, inset = 0): THREE.Shape {
     const n = RING_SIZES[cell.ring];
     const [rb0, rb1] = RING_BOUNDS[cell.ring];
-    const a0 = (cell.idx / n) * Math.PI * 2;
-    const a1 = ((cell.idx + 1) / n) * Math.PI * 2;
-    const rIn = rb0 * BOARD_R;
-    const rOut = rb1 * BOARD_R;
+    // el margen angular se mide sobre el radio medio para que la junta tenga
+    // más o menos el mismo ancho en los dos bordes rectos de la casilla
+    const dA = inset / (((rb0 + rb1) / 2) * BOARD_R);
+    const a0 = (cell.idx / n) * Math.PI * 2 + dA;
+    const a1 = ((cell.idx + 1) / n) * Math.PI * 2 - dA;
+    const rIn = rb0 * BOARD_R + inset;
+    const rOut = rb1 * BOARD_R - inset;
     // el shape vive en XY y se extruye en Z; con rotation.x = -PI/2 el mundo
     // queda x'=x, y'=z, z'=-y, así que se construye con ángulos negados
     const shape = new THREE.Shape();
@@ -262,23 +271,58 @@ export class Board3D {
     return shape;
   }
 
-  /** En 'lamina' son la tapa lisa (y la zona de clic); en 'moderno', losetas de color. */
+  /**
+   * En 'lamina' son la tapa lisa (y la zona de clic); en 'moderno', losetas de
+   * color separadas por una junta.
+   *
+   * En 'moderno' cada casilla son dos mallas: una base oscura del tamaño
+   * completo, que resuelve el clic en toda el área y asoma entre las losetas
+   * haciendo de junta, y encima la loseta de color con un margen. Sin esa
+   * junta los cuatro anillos de Pasiones —que comparten paleta y fase— se
+   * fundían en una sola banda de 24 gajos y el tablero perdía las divisiones
+   * que sí se ven en 'lamina'.
+   */
   private buildCells(): void {
-    const moderno = this.style === 'moderno';
     for (let ring = 0; ring < NUM_RINGS; ring++) {
       for (let idx = 0; idx < RING_SIZES[ring]; idx++) {
         const cell = { ring, idx };
-        const geo = new THREE.ExtrudeGeometry(this.cellShape(cell), {
-          depth: moderno ? 1.4 : 0.9,
-          bevelEnabled: moderno,
-          bevelThickness: 0.12,
-          bevelSize: 0.1,
-          bevelSegments: 1,
-        });
-        const color = moderno ? MODERNO_RING_COLORS[ring][idx % 2] : COL_BOARD;
-        const mesh = new THREE.Mesh(geo, this.mat(color, moderno ? 0.75 : 0.8));
+
+        if (this.style === 'moderno') {
+          const base = new THREE.Mesh(
+            new THREE.ExtrudeGeometry(this.cellShape(cell), { depth: 1.25, bevelEnabled: false }),
+            this.mat(COL_JUNTA, 0.95),
+          );
+          base.rotation.x = -Math.PI / 2;
+          base.position.y = TILE_TOP - 1.75;
+          base.receiveShadow = true;
+          base.userData.cell = cell;
+          this.cellsGroup.add(base);
+
+          const tile = new THREE.Mesh(
+            new THREE.ExtrudeGeometry(this.cellShape(cell, TILE_INSET), {
+              depth: 0.36,
+              bevelEnabled: true,
+              bevelThickness: 0.12,
+              bevelSize: 0.1,
+              bevelSegments: 1,
+            }),
+            this.mat(MODERNO_RING_COLORS[ring][idx % 2], 0.75),
+          );
+          tile.rotation.x = -Math.PI / 2;
+          tile.position.y = TILE_TOP - 0.5;
+          tile.castShadow = true;
+          tile.receiveShadow = true;
+          tile.raycast = noRaycast; // el clic lo resuelve la base de abajo
+          this.cellsGroup.add(tile);
+          continue;
+        }
+
+        const mesh = new THREE.Mesh(
+          new THREE.ExtrudeGeometry(this.cellShape(cell), { depth: 0.9, bevelEnabled: false }),
+          this.mat(COL_BOARD, 0.8),
+        );
         mesh.rotation.x = -Math.PI / 2;
-        mesh.position.y = moderno ? TILE_TOP - 1.55 : 0.1;
+        mesh.position.y = 0.1;
         mesh.receiveShadow = true;
         mesh.userData.cell = cell;
         this.cellsGroup.add(mesh);
