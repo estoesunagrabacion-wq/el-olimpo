@@ -39,6 +39,12 @@ export interface HistoryEntry {
   n: number;
   owner: Owner;
   text: string;
+  /**
+   * La jugada que produjo esta entrada. Guardarla es lo que permite deshacer:
+   * el estado se reconstruye reaplicando la historia desde la posición
+   * inicial, sin necesidad de snapshots.
+   */
+  move: Move;
 }
 
 export type GameResult =

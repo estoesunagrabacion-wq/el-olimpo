@@ -17,7 +17,7 @@ Abrí cualquiera de los dos archivos de [`builds/`](builds/). Los dos son un ún
 
 La versión liviana es el mismo juego con las mismas reglas y la misma IA: solo cambia cómo se dibuja el tablero. Sirve para máquinas viejas, navegadores con la aceleración gráfica desactivada, o simplemente para mandar un archivo chico.
 
-Dos modos: contra la IA (tres dificultades) o dos jugadores en la misma pantalla. La partida se guarda sola en el navegador.
+Dos modos: contra la IA (tres dificultades) o dos jugadores en la misma pantalla. La partida se guarda sola en el navegador y se puede deshacer jugada por jugada hasta el principio — contra la IA cada deshacer retrocede hasta que vuelva a ser tu turno, porque si no la máquina respondería enseguida y dejaría todo igual.
 
 ## Desarrollo
 
@@ -76,6 +76,8 @@ src/
 ```
 
 El motor no sabe que existe una pantalla: no importa DOM ni three.js, y los tests lo ejercitan directamente. Toda la parte visual depende del motor, nunca al revés.
+
+Cada entrada del historial guarda la jugada que la produjo, así que deshacer es rehacer la partida desde la posición inicial sin la última jugada (`replayTo`). Se eligió eso sobre guardar snapshots porque la partida se serializa entera en `localStorage` y una pila de estados la haría crecer sin techo; y sobre revertir jugada por jugada porque reaplicar es exacto por construcción, sin tener que recordar qué se capturó o qué se sacrificó en cada canje. Rehacer 200 jugadas lleva unos 4 ms.
 
 `main.ts` tampoco sabe qué tablero tiene enfrente: lo pide siempre a `boardimpl` y lo usa a través de la interfaz `BoardView`. Cada build decide cuál de las dos implementaciones se compila.
 

@@ -2,6 +2,7 @@
 
 import { REGIONES, cellLabel } from './board';
 import { getPiece, hasAnyMove, isLegal, pieceAt } from './rules';
+import { newGame } from './setup';
 import type { GameResult, GameState, Move, Owner, Piece } from './types';
 import { PIECE_NAMES, otherOwner } from './types';
 
@@ -58,11 +59,34 @@ export function applyMove(state: GameState, move: Move, quiet = false): ApplyInf
   }
 
   if (!quiet) {
-    state.history = [...state.history, { n: state.history.length + 1, owner: mover, text }];
+    state.history = [...state.history, { n: state.history.length + 1, owner: mover, text, move }];
   }
   state.turn = otherOwner(mover);
   state.result = evaluateEnd(state);
   return { captured, text };
+}
+
+/**
+ * Reconstruye la partida quedándose con las primeras `plies` jugadas de su
+ * historia. Es la base del deshacer.
+ *
+ * Se rehace desde la posición inicial en vez de guardar snapshots por dos
+ * razones: la partida guardada se serializa entera en localStorage y una pila
+ * de estados la haría crecer sin techo, y reaplicar es exacto por
+ * construcción, mientras que revertir jugada por jugada obliga a recordar
+ * qué se capturó y qué se sacrificó en cada canje.
+ *
+ * `initialPieces` reparte los ids en orden fijo, así que los ids de las piezas
+ * que traen las jugadas siguen siendo válidos tras rehacer.
+ */
+export function replayTo(state: GameState, plies: number): GameState {
+  const n = Math.max(0, Math.min(plies, state.history.length));
+  // quién salió: el que figura en la primera entrada, o el turno actual si
+  // todavía no se jugó nada
+  const first = state.history[0]?.owner ?? state.turn;
+  const fresh = newGame(state.options, first);
+  for (let i = 0; i < n; i++) applyMove(fresh, state.history[i].move);
+  return fresh;
 }
 
 export function regionCounts(state: GameState): Record<Owner, number> {

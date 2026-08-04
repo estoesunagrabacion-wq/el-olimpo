@@ -3,7 +3,7 @@
 import reglasMd from '../docs/reglas-el-olimpo.md?raw';
 import AiWorkerCtor from './ai/worker?worker&inline';
 import { bestMove } from './engine/ai';
-import { applyMove, regionCounts, scoreByRegions } from './engine/apply';
+import { applyMove, regionCounts, replayTo, scoreByRegions } from './engine/apply';
 import { newGame } from './engine/setup';
 import { canjeOptions, canSelect, pieceAt, pieceDests } from './engine/rules';
 import type { GameResult, GameState, Move, MoveDest, Owner, Piece } from './engine/types';
@@ -19,8 +19,12 @@ import { isMuted, setMuted, sfx } from './ui3d/sound';
 type Mode = 'ai' | 'hotseat';
 const HUMAN: Owner = 'rojo';
 const SAVE_KEY = 'el-olimpo-partida';
-/** Subir esto cuando cambie la forma de GameState: invalida las partidas viejas. */
-const SAVE_VERSION = 1;
+/**
+ * Subir esto cuando cambie la forma de GameState: invalida las partidas viejas.
+ * v2: cada entrada de historia guarda además la jugada, que es lo que permite
+ * deshacer. Una partida v1 no la tiene y no se podría rehacer.
+ */
+const SAVE_VERSION = 2;
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -148,6 +152,8 @@ function updateHud(): void {
   const humanTurn = mode === 'hotseat' || state.turn === HUMAN;
   const opts = !state.result && humanTurn && !thinking ? canjeOptions(state, state.turn) : [];
   canjeBtn.hidden = opts.length === 0;
+
+  ($('btnUndo') as HTMLButtonElement).disabled = thinking || state.history.length === 0;
 
   const hist = $('history');
   hist.innerHTML = state.history
@@ -372,6 +378,40 @@ function onBoardPointerMove(ev: PointerEvent): void {
     board.domElement.style.cursor = pointer ? 'pointer' : 'grab';
   });
 }
+
+/* ---------- deshacer ---------- */
+
+/**
+ * Vuelve atrás rehaciendo la partida sin la última jugada.
+ *
+ * Contra la IA se retrocede hasta que vuelva a mover el humano: deshacer una
+ * sola jugada devolvería el turno a la máquina, que respondería enseguida y
+ * dejaría todo igual que antes de apretar el botón.
+ */
+function undoMove(): void {
+  if (thinking || state.history.length === 0) return;
+  let k = state.history.length - 1;
+  let anterior = replayTo(state, k);
+  if (mode === 'ai') {
+    while (k > 0 && anterior.turn !== HUMAN) {
+      k--;
+      anterior = replayTo(state, k);
+    }
+  }
+  state = anterior;
+  selected = null;
+  dests = [];
+  lastMove = null;
+  save();
+  // si la partida había terminado, deshacer la reabre: hay que bajar el cartel
+  $('banner').hidden = true;
+  board?.syncPieces(state);
+  refreshMarkers();
+  updateHud();
+  sfx.select();
+}
+
+$('btnUndo').addEventListener('click', undoMove);
 
 /* ---------- canje ---------- */
 
