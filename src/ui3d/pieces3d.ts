@@ -131,11 +131,16 @@ function buildVirtud(g: THREE.Group, m: Mats): void {
       m.body,
     ),
   );
-  // parasol acanalado
-  add(g, new THREE.ConeGeometry(4.4, 1.6, 28), m.body, [0, 11.8, 0]);
-  add(g, new THREE.CylinderGeometry(1.0, 1.3, 0.5, 20), m.body, [0, 12.7, 0]);
+  // Parasol: más ancho y más plano que el original. A escala de juego la
+  // Virtud se confundía con el Pueblo porque ambos rematan anchos; llevándolo
+  // a disco franco, la Virtud queda como la única de ala plana.
+  // 5.1 de radio y no más: la Virtud solo pisa Regiones y Tiempo, y la banda
+  // del Tiempo mide 10.5, así que el ala no debe pasar de 10.2 de diámetro
+  // para no montarse sobre el anillo vecino.
+  add(g, new THREE.ConeGeometry(5.1, 1.15, 32), m.body, [0, 11.7, 0]);
+  add(g, new THREE.CylinderGeometry(1.0, 1.3, 0.5, 20), m.body, [0, 12.5, 0]);
   // capullo
-  add(g, new THREE.SphereGeometry(0.95, 18, 14), m.body, [0, 13.5, 0], [0, 0, 0], [1, 1.25, 1]);
+  add(g, new THREE.SphereGeometry(0.95, 18, 14), m.body, [0, 13.3, 0], [0, 0, 0], [1, 1.25, 1]);
 }
 
 function buildDivinidad(g: THREE.Group, m: Mats): void {
@@ -172,16 +177,16 @@ function buildPueblo(g: THREE.Group, m: Mats): void {
   g.add(
     lathe(
       [
-        [0.95, 4.8], [1.3, 5.2], [3.3, 6.1], [3.7, 7.0], [3.55, 7.5],
-        [3.0, 7.2], [1.15, 6.6], [0.75, 6.9], [0, 6.9],
+        [0.95, 4.8], [1.3, 5.2], [3.6, 6.3], [4.25, 7.6], [4.1, 8.1],
+        [3.45, 7.7], [1.15, 6.6], [0.75, 6.9], [0, 6.9],
       ],
       m.body,
       32,
     ),
   );
-  // hongo que asoma de la copa
-  add(g, new THREE.CylinderGeometry(0.7, 0.8, 1.6, 16), m.body, [0, 7.6, 0]);
-  add(g, new THREE.SphereGeometry(1.35, 20, 14), m.body, [0, 8.9, 0], [0, 0, 0], [1, 0.85, 1]);
+  // Copa abierta y sin el hongo que antes la coronaba: con el hongo la
+  // silueta era una bola sobre un ala y se leía igual que la Virtud. Ahora
+  // el Pueblo es el único que remata en cáliz vacío.
 }
 
 function buildPontifice(g: THREE.Group, m: Mats): void {
@@ -197,10 +202,11 @@ function buildPontifice(g: THREE.Group, m: Mats): void {
       m.body,
     ),
   );
-  // remate hendido: dos puntas que se abren
-  const prong = new THREE.ConeGeometry(0.5, 1.9, 12);
-  add(g, prong, m.body, [-0.55, 9.2, 0], [0, 0, 0.3]);
-  add(g, prong, m.body, [0.55, 9.2, 0], [0, 0, -0.3]);
+  // Remate hendido: dos puntas que se abren. Alargadas y separadas para que
+  // la horquilla se lea como tal y no como un cono romo.
+  const prong = new THREE.ConeGeometry(0.6, 3.0, 12);
+  add(g, prong, m.body, [-0.95, 9.8, 0], [0, 0, 0.42]);
+  add(g, prong, m.body, [0.95, 9.8, 0], [0, 0, -0.42]);
 }
 
 function buildDiablo(g: THREE.Group, m: Mats): void {
@@ -220,8 +226,10 @@ function buildDiablo(g: THREE.Group, m: Mats): void {
   );
   // la media luna, cuernos hacia arriba
   const arc = Math.PI * 1.35;
-  const moon = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.6, 12, 48, arc), m.body);
-  moon.position.set(0, 10.2, 0);
+  // Es la única silueta asimétrica del juego, así que agrandarla es lo que
+  // más rinde: de lejos el Diablo se reconoce por la luna y nada más.
+  const moon = new THREE.Mesh(new THREE.TorusGeometry(3.3, 0.75, 12, 48, arc), m.body);
+  moon.position.set(0, 10.9, 0);
   moon.rotation.z = -Math.PI / 2 - arc / 2; // arco simétrico con el hueco arriba
   moon.castShadow = true;
   g.add(moon);
@@ -243,15 +251,17 @@ function buildIdolo(g: THREE.Group, m: Mats): void {
   add(g, new THREE.TorusGeometry(0.85, 0.22, 8, 20), m.body, [0, 6.8, 0], [Math.PI / 2, 0, 0]);
   // cápsula de amapola
   add(g, new THREE.SphereGeometry(1.85, 22, 16), m.body, [0, 9.3, 0], [0, 0, 0], [1, 1.15, 1]);
-  // coronita de puntas
+  // Corona de brotes, bastante más alta y abierta que la original: es lo
+  // único que separa al Ídolo del Cura a distancia, y con 0.8 de alto no se
+  // veía. Ahora sobresale de la cápsula y hace silueta erizada.
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
     add(
       g,
-      new THREE.ConeGeometry(0.26, 0.8, 8),
+      new THREE.ConeGeometry(0.34, 2.0, 8),
       m.body,
-      [Math.cos(a) * 0.95, 11.5, Math.sin(a) * 0.95],
-      [Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35],
+      [Math.cos(a) * 1.5, 11.9, Math.sin(a) * 1.5],
+      [Math.sin(a) * 0.42, 0, -Math.cos(a) * 0.42],
     );
   }
 }
@@ -275,10 +285,10 @@ function buildSacerdote(g: THREE.Group, m: Mats): void {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
     add(
       g,
-      new THREE.ConeGeometry(0.32, 1.0, 8),
+      new THREE.ConeGeometry(0.36, 1.5, 8),
       m.body,
-      [Math.cos(a) * 1.05, 7.55, Math.sin(a) * 1.05],
-      [Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3],
+      [Math.cos(a) * 1.3, 7.75, Math.sin(a) * 1.3],
+      [Math.sin(a) * 0.38, 0, -Math.cos(a) * 0.38],
     );
   }
   add(g, new THREE.SphereGeometry(0.55, 14, 10), m.body, [0, 7.5, 0]);
