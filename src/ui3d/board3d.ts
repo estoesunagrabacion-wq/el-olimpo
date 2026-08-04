@@ -44,8 +44,12 @@ const COL_JUNTA = 0x241a10;
 const TILE_INSET = 0.45;
 
 const MODERNO_RING_COLORS: [number, number][] = [
-  [0xefe2b8, 0xece0c4], // Regiones
-  [0xc7dbd6, 0xdbe9e5], // Tiempo
+  // Regiones y Tiempo llevan pares bien separados en claridad: con los tonos
+  // originales (efe2b8/ece0c4 y c7dbd6/dbe9e5) el damero era imperceptible y
+  // no se podían contar las 6 y 12 casillas de un vistazo. Cada anillo
+  // conserva su familia de color —cálida el central, fría el del Tiempo.
+  [0xefe2b8, 0xcfae6a], // Regiones
+  [0xc7dbd6, 0x89ada6], // Tiempo
   [0x372f28, 0xdcb2a8], // Pasiones I
   [0x372f28, 0xdcb2a8], // Pasiones II
   [0x372f28, 0xdcb2a8], // Pasiones III
