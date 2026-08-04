@@ -21,7 +21,7 @@ export function makeState(
     pieces,
     turn,
     options: { virtudRival: true, ...options },
-    cangeoUsado: { rojo: false, dorado: false },
+    canjeUsado: { rojo: false, dorado: false },
     history: [],
     result: null,
   };

@@ -11,7 +11,7 @@ export function cloneState(state: GameState): GameState {
     pieces: state.pieces.map((p) => ({ ...p, home: { ...p.home } })),
     turn: state.turn,
     options: { ...state.options },
-    cangeoUsado: { ...state.cangeoUsado },
+    canjeUsado: { ...state.canjeUsado },
     history: state.history, // la historia no se muta en la búsqueda; se reemplaza al aplicar de verdad
     result: state.result,
   };
@@ -32,15 +32,15 @@ export function applyMove(state: GameState, move: Move, quiet = false): ApplyInf
   let captured: Piece | null = null;
   let text: string;
 
-  if (move.kind === 'cangeo') {
+  if (move.kind === 'canje') {
     const db = state.pieces.find((p) => p.type === 'DB' && p.owner === mover)!;
     for (const id of move.sacrificeIds) getPiece(state, id).alive = false;
     db.alive = true;
     db.ring = db.home.ring;
     db.idx = db.home.idx;
-    state.cangeoUsado[mover] = true;
+    state.canjeUsado[mover] = true;
     const names = move.sacrificeIds.map((id) => PIECE_NAMES[getPiece(state, id).type]).join(' + ');
-    text = `cangea su Diablo (sacrifica ${names}); reaparece en ${cellLabel(db.home)}`;
+    text = `canjea su Diablo (sacrifica ${names}); reaparece en ${cellLabel(db.home)}`;
   } else {
     const piece = getPiece(state, move.pieceId);
     const from = cellLabel({ ring: piece.ring, idx: piece.idx });

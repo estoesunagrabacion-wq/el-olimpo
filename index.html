@@ -61,7 +61,7 @@
       <div class="pill" id="turnPill">Turno: —</div>
       <div class="pill"><span class="swatch rojo"></span>Regiones: <b id="regRojo">0</b></div>
       <div class="pill"><span class="swatch dorado"></span>Regiones: <b id="regDorado">0</b></div>
-      <button class="ctrl" id="btnCangeo" hidden>Cangear el Diablo</button>
+      <button class="ctrl" id="btnCanje" hidden>Canjear el Diablo</button>
       <button class="ctrl" id="btnScore">Terminar y contar</button>
       <button class="ctrl" id="btnRules">Reglas</button>
       <button class="ctrl" id="btnSound" title="Sonido">🔊</button>
@@ -78,6 +78,24 @@
         </div>
         <div id="pieceLegend"></div>
       </aside>
+    </div>
+  </div>
+
+  <!-- Modal del canje del Diablo -->
+  <div id="canjeModal" class="modal" hidden>
+    <div class="modal-box canje-box">
+      <h2>Canjear el Diablo</h2>
+      <p>
+        El Diablo vuelve a su casilla de origen en el Averno, a cambio de las piezas que
+        sacrifiques. <b>Solo se puede hacer una vez por partida y no se puede deshacer.</b>
+      </p>
+      <button class="mode-btn" id="canjeIdCu" hidden>
+        Sacrificar un Ídolo y un Cura
+      </button>
+      <button class="mode-btn" id="canje2CuPo" hidden>
+        Sacrificar dos Curas y un Pontífice
+      </button>
+      <button class="ctrl" id="btnCancelarCanje">Cancelar — no canjear</button>
     </div>
   </div>
 

@@ -62,7 +62,7 @@ function orderedMoves(state: GameState, owner: Owner): Move[] {
   // y multiplica el árbol de búsqueda.
   const moves = allMoves(state, owner, { includeRivalVirtudes: false });
   const keyOf = (m: Move): number => {
-    if (m.kind === 'cangeo') return 60;
+    if (m.kind === 'canje') return 60;
     const target = pieceAt(state, m.to);
     if (target) return 100 + PIECE_VALUES[target.type];
     return m.to.ring === REGIONES ? 40 : 0;

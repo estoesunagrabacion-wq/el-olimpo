@@ -90,7 +90,7 @@ export const sfx = {
     knock(0, 0.8);
     tone(320, 0.3, 0.12, 'sawtooth', 0.06, 110);
   },
-  cangeo(): void {
+  canje(): void {
     tone(110, 0.8, 0.16, 'sawtooth', 0, 220);
     tone(220, 0.9, 0.1, 'sine', 0.15, 440);
     knock(0.85, 0.7);

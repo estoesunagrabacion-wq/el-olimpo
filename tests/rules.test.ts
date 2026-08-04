@@ -3,7 +3,7 @@ import { AVERNO, REGIONES, TIEMPO } from '../src/engine/board';
 import { initialPieces, newGame } from '../src/engine/setup';
 import {
   allMoves,
-  cangeoOptions,
+  canjeOptions,
   canSelect,
   isCellThreatened,
   pieceDests,
@@ -215,7 +215,7 @@ describe('regla de la Virtud rival', () => {
   });
 });
 
-describe('cangeo del Diablo', () => {
+describe('canje del Diablo', () => {
   function deadDbState() {
     const db = piece('DB', 'rojo', AVERNO, 3, { alive: false });
     const ídolo = piece('ID', 'rojo', 4, 2);
@@ -227,32 +227,32 @@ describe('cangeo del Diablo', () => {
   }
 
   it('ofrece ambos combos cuando hay piezas suficientes', () => {
-    const opts = cangeoOptions(deadDbState(), 'rojo');
+    const opts = canjeOptions(deadDbState(), 'rojo');
     expect(opts.map((o) => o.combo).sort()).toEqual(['2CU+PO', 'ID+CU']);
   });
 
   it('al aplicarlo, el Diablo revive en su casilla original y los sacrificios mueren', () => {
     const state = deadDbState();
-    const opt = cangeoOptions(state, 'rojo')[0];
-    applyMove(state, { kind: 'cangeo', combo: opt.combo, sacrificeIds: opt.sacrificeIds });
+    const opt = canjeOptions(state, 'rojo')[0];
+    applyMove(state, { kind: 'canje', combo: opt.combo, sacrificeIds: opt.sacrificeIds });
     const db = state.pieces.find((p) => p.type === 'DB' && p.owner === 'rojo')!;
     expect(db.alive).toBe(true);
     expect({ ring: db.ring, idx: db.idx }).toEqual({ ring: AVERNO, idx: 3 });
     for (const id of opt.sacrificeIds) {
       expect(state.pieces.find((p) => p.id === id)!.alive).toBe(false);
     }
-    expect(state.cangeoUsado.rojo).toBe(true);
+    expect(state.canjeUsado.rojo).toBe(true);
     // una sola vez por partida
-    expect(cangeoOptions(state, 'rojo')).toEqual([]);
+    expect(canjeOptions(state, 'rojo')).toEqual([]);
   });
 
   it('no se ofrece si la casilla original está ocupada o el Diablo vive', () => {
     const state = deadDbState();
     state.pieces.push(piece('DB', 'dorado', AVERNO, 3)); // ocupa el home
-    expect(cangeoOptions(state, 'rojo')).toEqual([]);
+    expect(canjeOptions(state, 'rojo')).toEqual([]);
     const state2 = deadDbState();
     state2.pieces[0].alive = true;
-    expect(cangeoOptions(state2, 'rojo')).toEqual([]);
+    expect(canjeOptions(state2, 'rojo')).toEqual([]);
   });
 });
 
@@ -282,7 +282,7 @@ describe('fin de partida', () => {
     // dorado solo tiene una VI encerrada... una VI siempre tiene casillas vacías
     // alrededor salvo que esté rodeada; más simple: dorado sin piezas móviles
     // no existe (todas mueven), así que simulamos: dorado solo con su Diablo
-    // muerto y sin material para cangear → sin jugadas.
+    // muerto y sin material para canjear → sin jugadas.
     const db = piece('DB', 'dorado', AVERNO, 9, { alive: false });
     const rojoP = piece('CU', 'rojo', 3, 5);
     const doradoVi = piece('VI', 'dorado', REGIONES, 3);

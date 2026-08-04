@@ -5,7 +5,7 @@ import AiWorkerCtor from './ai/worker?worker&inline';
 import { bestMove } from './engine/ai';
 import { applyMove, regionCounts, scoreByRegions } from './engine/apply';
 import { newGame } from './engine/setup';
-import { cangeoOptions, canSelect, pieceAt, pieceDests } from './engine/rules';
+import { canjeOptions, canSelect, pieceAt, pieceDests } from './engine/rules';
 import type { GameResult, GameState, Move, MoveDest, Owner, Piece } from './engine/types';
 import { PIECE_NAMES } from './engine/types';
 import { mdToHtml } from './ui/markdown';
@@ -126,10 +126,10 @@ function updateHud(): void {
   $('lostRojo').innerHTML = lost('rojo');
   $('lostDorado').innerHTML = lost('dorado');
 
-  const cangeoBtn = $('btnCangeo');
+  const canjeBtn = $('btnCanje');
   const humanTurn = mode === 'hotseat' || state.turn === HUMAN;
-  const opts = !state.result && humanTurn && !thinking ? cangeoOptions(state, state.turn) : [];
-  cangeoBtn.hidden = opts.length === 0;
+  const opts = !state.result && humanTurn && !thinking ? canjeOptions(state, state.turn) : [];
+  canjeBtn.hidden = opts.length === 0;
 
   const hist = $('history');
   hist.innerHTML = state.history
@@ -179,6 +179,15 @@ function loadSave(): { state: GameState; mode: Mode; difficulty: number } | null
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (!data?.state?.pieces) return null;
+    // Partidas guardadas antes de corregir la ortografía traen el campo con el
+    // nombre viejo; sin esto, canjear en una partida retomada tiraba
+    // TypeError al escribir sobre un objeto inexistente.
+    const s = data.state;
+    if (!s.canjeUsado && s.cangeoUsado) {
+      s.canjeUsado = s.cangeoUsado;
+      delete s.cangeoUsado;
+    }
+    if (!s.canjeUsado) return null;
     return data;
   } catch {
     return null;
@@ -206,11 +215,11 @@ function execMove(move: Move): void {
     anim = b ? b.animateMove(move.pieceId, move.to, targetId) : Promise.resolve();
   } else {
     lastMove = null;
-    sfx.cangeo();
+    sfx.canje();
     const last = state.history[state.history.length - 1];
     const db = state.pieces.find((p) => p.type === 'DB' && p.alive && last?.owner === p.owner);
     anim = b
-      ? b.animateCangeo(db?.id ?? -1, db ? { ring: db.ring, idx: db.idx } : { ring: 0, idx: 0 }, move.sacrificeIds)
+      ? b.animateCanje(db?.id ?? -1, db ? { ring: db.ring, idx: db.idx } : { ring: 0, idx: 0 }, move.sacrificeIds)
       : Promise.resolve();
   }
   refreshMarkers();
@@ -331,22 +340,43 @@ function onBoardPointerMove(ev: PointerEvent): void {
   });
 }
 
-/* ---------- cangeo ---------- */
+/* ---------- canje ---------- */
 
-$('btnCangeo').addEventListener('click', () => {
-  const opts = cangeoOptions(state, state.turn);
+/**
+ * El canje se elige en un modal y no con window.confirm: ahí "Cancelar" no
+ * cancelaba, elegía el segundo combo, así que una vez abierto el diálogo no
+ * había forma de echarse atrás de una jugada irreversible y única por partida.
+ * Cada combo es su propio botón y cancelar cierra sin jugar.
+ */
+const canjeModal = $('canjeModal');
+
+function closeCanje(): void {
+  canjeModal.hidden = true;
+}
+
+$('btnCanje').addEventListener('click', () => {
+  const opts = canjeOptions(state, state.turn);
   if (opts.length === 0) return;
-  let chosen = opts[0];
-  if (opts.length > 1) {
-    const quiere = window.confirm(
-      'Cangear el Diablo:\n\nAceptar = sacrificar un Ídolo y un Cura\nCancelar = sacrificar dos Curas y un Pontífice',
-    );
-    chosen = quiere ? opts.find((o) => o.combo === 'ID+CU')! : opts.find((o) => o.combo === '2CU+PO')!;
-  } else {
-    const names = chosen.combo === 'ID+CU' ? 'un Ídolo y un Cura' : 'dos Curas y un Pontífice';
-    if (!window.confirm(`Cangear el Diablo sacrificando ${names}. ¿Confirmás?`)) return;
-  }
-  execMove({ kind: 'cangeo', combo: chosen.combo, sacrificeIds: chosen.sacrificeIds });
+  // solo se ofrecen los combos para los que hay piezas suficientes
+  $('canjeIdCu').hidden = !opts.some((o) => o.combo === 'ID+CU');
+  $('canje2CuPo').hidden = !opts.some((o) => o.combo === '2CU+PO');
+  canjeModal.hidden = false;
+});
+
+for (const [id, combo] of [
+  ['canjeIdCu', 'ID+CU'],
+  ['canje2CuPo', '2CU+PO'],
+] as const) {
+  $(id).addEventListener('click', () => {
+    const opt = canjeOptions(state, state.turn).find((o) => o.combo === combo);
+    closeCanje();
+    if (opt) execMove({ kind: 'canje', combo: opt.combo, sacrificeIds: opt.sacrificeIds });
+  });
+}
+
+$('btnCancelarCanje').addEventListener('click', closeCanje);
+canjeModal.addEventListener('click', (e) => {
+  if (e.target === canjeModal) closeCanje();
 });
 
 /* ---------- botones ---------- */

@@ -15,7 +15,7 @@ export interface Piece {
   ring: number;
   idx: number;
   alive: boolean;
-  /** Casilla de origen (usada por el cangeo del Diablo). */
+  /** Casilla de origen (usada por el canje del Diablo). */
   home: Cell;
 }
 
@@ -33,7 +33,7 @@ export interface MoveDest extends Cell {
 
 export type Move =
   | { kind: 'move'; pieceId: number; to: Cell }
-  | { kind: 'cangeo'; combo: 'ID+CU' | '2CU+PO'; sacrificeIds: number[] };
+  | { kind: 'canje'; combo: 'ID+CU' | '2CU+PO'; sacrificeIds: number[] };
 
 export interface HistoryEntry {
   n: number;
@@ -49,7 +49,7 @@ export interface GameState {
   pieces: Piece[];
   turn: Owner;
   options: GameOptions;
-  cangeoUsado: Record<Owner, boolean>;
+  canjeUsado: Record<Owner, boolean>;
   history: HistoryEntry[];
   result: GameResult | null;
 }

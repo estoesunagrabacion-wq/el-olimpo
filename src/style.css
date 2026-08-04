@@ -101,7 +101,7 @@ button.ctrl {
   font-size: 0.84rem;
 }
 button.ctrl:hover { background: var(--gold-light); }
-#btnCangeo { background: var(--rose); font-weight: bold; }
+#btnCanje { background: var(--rose); font-weight: bold; }
 
 #layout {
   display: flex;
@@ -190,6 +190,12 @@ canvas { display: block; touch-action: none; }
   position: relative;
 }
 .modal-box .close { position: sticky; top: 0; float: right; }
+
+.canje-box { max-width: 460px; text-align: center; }
+.canje-box h2 { margin-top: 0; font-size: 1.2rem; letter-spacing: 2px; }
+.canje-box p { font-size: 0.88rem; line-height: 1.5; color: var(--ink-soft); }
+.canje-box .mode-btn { font-size: 0.92rem; }
+.canje-box #btnCancelarCanje { margin-top: 6px; }
 .rules h1 { font-size: 1.4rem; letter-spacing: 3px; }
 .rules h2 { font-size: 1.1rem; margin-top: 1.2em; }
 .rules p, .rules li, .rules td { font-size: 0.9rem; line-height: 1.55; }

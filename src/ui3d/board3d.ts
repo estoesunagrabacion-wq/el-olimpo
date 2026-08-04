@@ -604,8 +604,8 @@ export class Board3D {
     });
   }
 
-  /** Cangeo: los sacrificios se hunden y el Diablo emerge en su casilla. */
-  animateCangeo(dbId: number, dbCell: Cell, sacrificeIds: number[]): Promise<void> {
+  /** Canje: los sacrificios se hunden y el Diablo emerge en su casilla. */
+  animateCanje(dbId: number, dbCell: Cell, sacrificeIds: number[]): Promise<void> {
     for (const id of sacrificeIds) {
       const g = this.pieceMeshes.get(id);
       if (!g) continue;

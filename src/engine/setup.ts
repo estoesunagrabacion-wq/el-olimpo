@@ -44,7 +44,7 @@ export function newGame(options: GameOptions, first: Owner = 'rojo'): GameState 
     pieces: initialPieces(),
     turn: first,
     options,
-    cangeoUsado: { rojo: false, dorado: false },
+    canjeUsado: { rojo: false, dorado: false },
     history: [],
     result: null,
   };

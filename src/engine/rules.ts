@@ -131,23 +131,23 @@ export function isCellThreatened(state: GameState, cell: Cell, by?: Owner): bool
   return false;
 }
 
-export interface CangeoOption {
+export interface CanjeOption {
   combo: 'ID+CU' | '2CU+PO';
   sacrificeIds: number[];
 }
 
 /**
- * Cangeo del Diablo: si el Diablo propio murió, una vez por partida puede
- * cangearse por (un Ídolo + un Cura) o (dos Curas + un Pontífice) vivos,
+ * Canje del Diablo: si el Diablo propio murió, una vez por partida puede
+ * canjearse por (un Ídolo + un Cura) o (dos Curas + un Pontífice) vivos,
  * y reaparece en su casilla original del Averno (que debe estar libre).
  */
-export function cangeoOptions(state: GameState, owner: Owner): CangeoOption[] {
-  if (state.cangeoUsado[owner]) return [];
+export function canjeOptions(state: GameState, owner: Owner): CanjeOption[] {
+  if (state.canjeUsado[owner]) return [];
   const db = state.pieces.find((p) => p.type === 'DB' && p.owner === owner);
   if (!db || db.alive) return [];
   if (pieceAt(state, db.home)) return [];
   const alive = (t: string) => state.pieces.filter((p) => p.alive && p.owner === owner && p.type === t);
-  const out: CangeoOption[] = [];
+  const out: CanjeOption[] = [];
   const ids = alive('ID');
   const cus = alive('CU');
   const pos = alive('PO');
@@ -157,7 +157,7 @@ export function cangeoOptions(state: GameState, owner: Owner): CangeoOption[] {
 }
 
 /**
- * Todas las jugadas legales de un bando (movimientos + cangeo).
+ * Todas las jugadas legales de un bando (movimientos + canje).
  * Con la opción `virtudRival` activa incluye mover una Virtud del rival,
  * solo si está amenazada (para salvarla, como dice el texto original).
  */
@@ -180,8 +180,8 @@ export function allMoves(
       out.push({ kind: 'move', pieceId: p.id, to: { ring: d.ring, idx: d.idx } });
     }
   }
-  for (const c of cangeoOptions(state, owner)) {
-    out.push({ kind: 'cangeo', combo: c.combo, sacrificeIds: c.sacrificeIds });
+  for (const c of canjeOptions(state, owner)) {
+    out.push({ kind: 'canje', combo: c.combo, sacrificeIds: c.sacrificeIds });
   }
   return out;
 }
@@ -192,7 +192,7 @@ export function hasAnyMove(state: GameState, owner: Owner): boolean {
     if (!p.alive || p.type === 'DI' || p.owner !== owner) continue;
     if (pieceDests(state, p).length > 0) return true;
   }
-  if (cangeoOptions(state, owner).length > 0) return true;
+  if (canjeOptions(state, owner).length > 0) return true;
   if (state.options.virtudRival) {
     for (const p of state.pieces) {
       if (!p.alive || p.type !== 'VI' || p.owner === owner) continue;
@@ -218,8 +218,8 @@ export function canSelect(state: GameState, piece: Piece, owner: Owner): boolean
 }
 
 export function isLegal(state: GameState, move: Move): boolean {
-  if (move.kind === 'cangeo') {
-    return cangeoOptions(state, state.turn).some((c) => c.combo === move.combo);
+  if (move.kind === 'canje') {
+    return canjeOptions(state, state.turn).some((c) => c.combo === move.combo);
   }
   const piece = getPiece(state, move.pieceId);
   if (!canSelect(state, piece, state.turn)) return false;
