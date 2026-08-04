@@ -17,6 +17,7 @@ export { makeIcons } from './ui3d/pieces3d';
 export const BOARD_STYLES: { value: BoardStyle; label: string }[] = [
   { value: 'lamina', label: 'Lámina original de 1891' },
   { value: 'moderno', label: 'Moderno (anillos de color)' },
+  { value: 'madera', label: 'Madera y latón — el que nunca se fabricó' },
 ];
 
 export function createBoard(container: HTMLElement, style: BoardStyle): BoardView {

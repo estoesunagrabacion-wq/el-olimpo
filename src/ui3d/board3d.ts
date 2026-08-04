@@ -11,7 +11,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { AVERNO, EJERCITO_RING, IDOLOS_RING, NUM_RINGS, REGIONES, RING_SIZES, TIEMPO } from '../engine/board';
 import type { Cell, GameState, MoveDest, Piece } from '../engine/types';
 import { BORDER_R, CENTER_R, RING_BOUNDS } from '../ui/geometry';
-import { buildPieceMesh } from './pieces3d';
+import { buildPieceMesh, type PiecePalette } from './pieces3d';
 
 const BOARD_R = 100;
 /** Altura donde apoyan las piezas: la cara superior de los discos. */
@@ -32,16 +32,34 @@ const COL_AVERNO = 0xcf6448; // discos rojos del borde
 const COL_MERIDIANA = 0x9e2f2f;
 
 /**
- * Dos estéticas conviven: 'lamina' reproduce la lámina original de 1891
- * (discos sobre tapa clara); 'moderno' es el tablero de anillos de color
- * de la primera versión 3D, conservado a pedido del usuario.
+ * Tres estéticas conviven:
+ *  - 'lamina'  reproduce la lámina original de 1891 (discos sobre tapa clara).
+ *  - 'moderno' es el tablero de anillos de color de la primera versión 3D.
+ *  - 'madera'  imagina el objeto que nunca se fabricó: marquetería de chapas
+ *    de madera con las divisiones embutidas en latón. El libro de 1891 describe
+ *    el juego pero nunca se construyó, así que este tablero es la única de las
+ *    tres estéticas que no reproduce nada: propone.
  */
-export type BoardStyle = 'lamina' | 'moderno';
+export type BoardStyle = 'lamina' | 'moderno' | 'madera';
 
 /** Junta entre losetas del estilo 'moderno': marca la división de casillas. */
 const COL_JUNTA = 0x241a10;
+/**
+ * Latón de las divisiones embutidas del estilo 'madera'.
+ *
+ * Van dos tonos porque la escena no tiene mapa de entorno: un material muy
+ * metálico no tiene qué reflejar y se ve casi negro salvo en el brillo
+ * especular. En las piezas torneadas (aros del canto) eso no molesta, porque
+ * la curva siempre atrapa la luz en algún punto; en las embutidas, que son
+ * planas y miran hacia arriba, hay que bajar el metal y subir el brillo para
+ * que se lea el color difuso.
+ */
+const COL_LATON = 0xc9a227;
+const COL_LATON_PLANO = 0xd8b33a;
 /** Cuánto se achica cada loseta por lado para dejar ver la junta. */
 const TILE_INSET = 0.45;
+/** En marquetería el filete de latón es más fino que una junta pintada. */
+const TILE_INSET_MADERA = 0.34;
 
 const MODERNO_RING_COLORS: [number, number][] = [
   // Regiones y Tiempo llevan pares bien separados en claridad: con los tonos
@@ -56,6 +74,27 @@ const MODERNO_RING_COLORS: [number, number][] = [
   [0x372f28, 0xdcb2a8], // Pasiones IV
   [0x8f2c2c, 0xa53a3a], // Averno
 ];
+
+/**
+ * Chapas de madera del estilo 'madera'. Cada anillo usa un par de maderas
+ * reales que un ebanista de 1891 habría tenido a mano, y el contraste crece
+ * hacia afuera: arce y cerezo en el centro, boj contra palisandro en las
+ * Pasiones —donde se juega y hace falta leer la casilla— y padauk en el
+ * Averno, la madera más roja que se usaba en marquetería.
+ */
+const MADERA_RING_COLORS: [number, number][] = [
+  [0xe0cba4, 0xc79a5e], // Regiones — arce / cerezo
+  [0xcbb187, 0x9d7c4e], // Tiempo — fresno / nogal
+  [0xd9c096, 0x5f3b28], // Pasiones I — boj / palisandro
+  [0xd9c096, 0x5f3b28], // Pasiones II
+  [0xd9c096, 0x5f3b28], // Pasiones III
+  [0xd9c096, 0x5f3b28], // Pasiones IV
+  [0x8c3a24, 0x63291a], // Averno — padauk / caoba quemada
+];
+
+/** Maderas del cuerpo: nogal oscuro el canto, y la mesa en roble ahumado. */
+const COL_NOGAL = 0x4a2f1c;
+const COL_ROBLE = 0x2b1c12;
 
 interface Tween {
   t0: number;
@@ -128,6 +167,10 @@ export class Board3D {
   private matCache = new Map<number, THREE.MeshStandardMaterial>();
   private disposed = false;
   readonly style: BoardStyle;
+  /** Las piezas del tablero de marquetería van sin pintar. */
+  private get piecePalette(): PiecePalette {
+    return this.style === 'madera' ? 'madera' : 'pintado';
+  }
 
   constructor(container: HTMLElement, style: BoardStyle = 'lamina') {
     this.style = style;
@@ -210,10 +253,37 @@ export class Board3D {
 
   private buildTable(): void {
     // mesa de apoyo
-    const table = new THREE.Mesh(new THREE.CylinderGeometry(BOARD_R * 2.4, BOARD_R * 2.4, 5, 64), this.mat(0x231710, 0.9));
+    const table = new THREE.Mesh(
+      new THREE.CylinderGeometry(BOARD_R * 2.4, BOARD_R * 2.4, 5, 64),
+      this.mat(this.style === 'madera' ? COL_ROBLE : 0x231710, 0.9),
+    );
     table.position.y = -5.6;
     table.receiveShadow = true;
     this.scene.add(table);
+
+    if (this.style === 'madera') {
+      // caja de nogal con un aro de latón embutido en el canto
+      const caja = new THREE.Mesh(
+        new THREE.CylinderGeometry(BOARD_R * 1.02, BOARD_R * 1.06, 4.2, 96),
+        this.mat(COL_NOGAL, 0.62),
+      );
+      caja.position.y = -1.6;
+      caja.castShadow = true;
+      caja.receiveShadow = true;
+      this.scene.add(caja);
+      for (const [r, grosor] of [
+        [BOARD_R * 1.035, 1.15],
+        [BOARD_R * 0.945, 0.5],
+      ] as const) {
+        const aro = new THREE.Mesh(new THREE.TorusGeometry(r, grosor, 12, 140), this.mat(COL_LATON, 0.26, 0.92));
+        aro.rotation.x = Math.PI / 2;
+        aro.position.y = TILE_TOP - 0.5;
+        aro.castShadow = true;
+        aro.raycast = noRaycast;
+        this.scene.add(aro);
+      }
+      return;
+    }
 
     if (this.style === 'moderno') {
       // cuerpo oscuro con aro dorado, como la primera versión 3D
@@ -286,15 +356,28 @@ export class Board3D {
    * fundían en una sola banda de 24 gajos y el tablero perdía las divisiones
    * que sí se ven en 'lamina'.
    */
+  /** Colores y medidas de las losetas, para los estilos que las usan. */
+  private tileLook(): { colors: [number, number][]; junta: number; inset: number } | null {
+    if (this.style === 'moderno') {
+      return { colors: MODERNO_RING_COLORS, junta: COL_JUNTA, inset: TILE_INSET };
+    }
+    if (this.style === 'madera') {
+      return { colors: MADERA_RING_COLORS, junta: COL_LATON, inset: TILE_INSET_MADERA };
+    }
+    return null;
+  }
+
   private buildCells(): void {
+    const look = this.tileLook();
     for (let ring = 0; ring < NUM_RINGS; ring++) {
       for (let idx = 0; idx < RING_SIZES[ring]; idx++) {
         const cell = { ring, idx };
 
-        if (this.style === 'moderno') {
+        if (look) {
           const base = new THREE.Mesh(
             new THREE.ExtrudeGeometry(this.cellShape(cell), { depth: 1.25, bevelEnabled: false }),
-            this.mat(COL_JUNTA, 0.95),
+            // el latón va pulido; la junta oscura del moderno, mate
+            this.style === 'madera' ? this.mat(COL_LATON_PLANO, 0.34, 0.45) : this.mat(look.junta, 0.95),
           );
           base.rotation.x = -Math.PI / 2;
           base.position.y = TILE_TOP - 1.75;
@@ -303,14 +386,15 @@ export class Board3D {
           this.cellsGroup.add(base);
 
           const tile = new THREE.Mesh(
-            new THREE.ExtrudeGeometry(this.cellShape(cell, TILE_INSET), {
+            new THREE.ExtrudeGeometry(this.cellShape(cell, look.inset), {
               depth: 0.36,
               bevelEnabled: true,
               bevelThickness: 0.12,
               bevelSize: 0.1,
               bevelSegments: 1,
             }),
-            this.mat(MODERNO_RING_COLORS[ring][idx % 2], 0.75),
+            // la chapa de madera va casi mate: el brillo lo pone el latón
+            this.mat(look.colors[ring][idx % 2], this.style === 'madera' ? 0.82 : 0.75),
           );
           tile.rotation.x = -Math.PI / 2;
           tile.position.y = TILE_TOP - 0.5;
@@ -402,7 +486,75 @@ export class Board3D {
     return mesh;
   }
 
+  /**
+   * Ornamentos del estilo 'madera': filetes de latón embutidos entre anillos,
+   * Meridiana embutida y roseta central.
+   *
+   * Los filetes entre anillos son más gruesos que las juntas entre casillas,
+   * igual que en una marquetería real: primero se arma el anillo y después se
+   * embuten los aros que lo separan del vecino. Eso hace que los siete anillos
+   * se lean como siete, y no como una masa de casillas.
+   */
+  private buildOrnamentsMadera(): void {
+    const y = TILE_TOP - 0.02;
+
+    // filete entre anillo y anillo, en los bordes internos y externos
+    const radios = new Set<number>();
+    for (const [r0, r1] of RING_BOUNDS) {
+      radios.add(r0);
+      radios.add(r1);
+    }
+    for (const r of radios) {
+      const aro = new THREE.Mesh(
+        new THREE.RingGeometry(r * BOARD_R - 0.42, r * BOARD_R + 0.42, 160),
+        this.mat(COL_LATON_PLANO, 0.32, 0.45),
+      );
+      aro.rotation.x = -Math.PI / 2;
+      aro.position.y = y + 0.34;
+      aro.raycast = noRaycast;
+      this.scene.add(aro);
+    }
+
+    // Meridiana: pletina de latón que cruza el tablero de lado a lado
+    const largo = (BORDER_R - CENTER_R) * BOARD_R;
+    const medio = ((BORDER_R + CENTER_R) / 2) * BOARD_R;
+    for (const s of [-1, 1]) {
+      const barra = new THREE.Mesh(new THREE.BoxGeometry(largo, 0.5, 1.5), this.mat(COL_LATON_PLANO, 0.3, 0.5));
+      barra.position.set(s * medio, y + 0.5, 0);
+      barra.castShadow = true;
+      barra.raycast = noRaycast;
+      this.scene.add(barra);
+    }
+
+    // roseta central de latón, donde se apoya la Divinidad
+    const roseta = new THREE.Mesh(
+      new THREE.CylinderGeometry(CENTER_R * BOARD_R, CENTER_R * BOARD_R * 1.05, 1.6, 64),
+      this.mat(COL_LATON_PLANO, 0.34, 0.5),
+    );
+    roseta.position.y = y + 0.3;
+    roseta.castShadow = true;
+    roseta.receiveShadow = true;
+    roseta.raycast = noRaycast;
+    this.scene.add(roseta);
+    this.scene.add(
+      this.thinStar(CENTER_R * BOARD_R * 0.66, CENTER_R * BOARD_R * 0.24, COL_NOGAL, -Math.PI / 2, y + 1.1),
+    );
+
+    // la Divinidad, tallada en marfil como en la lámina
+    const divinidad = buildPieceMesh('DI', 'neutral', 'madera');
+    divinidad.position.set(0, y + 1.1, 0);
+    divinidad.scale.setScalar(1.15);
+    divinidad.traverse((o) => {
+      o.raycast = noRaycast;
+    });
+    this.scene.add(divinidad);
+  }
+
   private buildOrnaments(): void {
+    if (this.style === 'madera') {
+      this.buildOrnamentsMadera();
+      return;
+    }
     if (this.style === 'moderno') {
       this.buildOrnamentsModerno();
       return;
@@ -520,7 +672,7 @@ export class Board3D {
       alive.add(p.id);
       let group = this.pieceMeshes.get(p.id);
       if (!group) {
-        group = buildPieceMesh(p.type, p.owner);
+        group = buildPieceMesh(p.type, p.owner, this.piecePalette);
         group.userData.pieceId = p.id;
         this.pieceMeshes.set(p.id, group);
         this.piecesGroup.add(group);

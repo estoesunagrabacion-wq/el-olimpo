@@ -12,8 +12,8 @@ Abrí cualquiera de los dos archivos de [`builds/`](builds/). Los dos son un ún
 
 | Archivo | Peso | Tablero | Requiere |
 |---|---|---|---|
-| `el-olimpo-v0.1.0.html` | 613 kB | escena 3D orbitable, dos estilos | WebGL |
-| `el-olimpo-v0.1.0-liviano.html` | 52 kB | plano, dibujado en 2D | nada |
+| `el-olimpo-v0.1.0.html` | 615 kB | escena 3D orbitable, tres estilos | WebGL |
+| `el-olimpo-v0.1.0-liviano.html` | 53 kB | plano, dibujado en 2D | nada |
 
 La versión liviana es el mismo juego con las mismas reglas y la misma IA: solo cambia cómo se dibuja el tablero. Sirve para máquinas viejas, navegadores con la aceleración gráfica desactivada, o simplemente para mandar un archivo chico.
 
@@ -24,7 +24,7 @@ Dos modos: contra la IA (tres dificultades) o dos jugadores en la misma pantalla
 ```bash
 npm install
 npm run dev      # servidor de desarrollo en localhost:5173
-npm test         # 35 tests del motor de reglas
+npm test         # 42 tests del motor de reglas
 npm run build    # genera los dos HTML autocontenidos en dist/
 ```
 
@@ -46,6 +46,16 @@ No es una cuadrícula: es un disco de **126 casillas** repartidas en siete anill
 En el centro, sin ser casilla, está la Divinidad: no se mueve, no ataca y no se puede capturar.
 
 Como cada tamaño divide al siguiente (6 | 12 | 24), la alineación radial es exacta: una casilla de Regiones abarca dos de Tiempo y cuatro de Pasiones. Moverse hacia afuera *expande* (varias casillas hijas) y hacia adentro *contrae* (una sola madre). Esa es la parte más particular de la geometría y vive entera en `src/engine/board.ts`.
+
+## Los tres tableros
+
+La versión 3D ofrece tres estéticas, elegibles desde el menú:
+
+- **Lámina original de 1891** — reproduce la lámina del libro: discos de colores sobre una tapa clara, con las letras de las casillas de origen.
+- **Moderno** — anillos de color con las casillas como losetas biseladas.
+- **Madera y latón** — el único que no reproduce nada: imagina el objeto que nunca se fabricó. Marquetería de chapas —arce y cerezo en las Regiones, boj contra palisandro en las Pasiones, padauk en el Averno— con las divisiones embutidas en latón, y las piezas talladas sin pintar.
+
+![El tablero de marquetería, con las divisiones embutidas en latón](docs/captura-madera.png)
 
 ## Las piezas
 

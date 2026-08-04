@@ -21,25 +21,45 @@ interface Mats {
   blue: THREE.MeshStandardMaterial;
 }
 
-const matsCache = new Map<PieceOwner, Mats>();
+/**
+ * Acabado de las piezas.
+ *  - 'pintado': la lámina en color del libro, ocre contra caoba.
+ *  - 'madera': madera sin pintar, boj claro contra palisandro, con los remates
+ *    en latón. Es el que acompaña al tablero de marquetería.
+ */
+export type PiecePalette = 'pintado' | 'madera';
 
-/** Colores de la lámina en color: amarillo ocre vs caoba, madera pintada. */
-const BODY_COLORS: Record<PieceOwner, { color: number; rough: number; metal: number }> = {
-  rojo: { color: 0x74352a, rough: 0.35, metal: 0.1 },
-  dorado: { color: 0xbf9434, rough: 0.42, metal: 0.3 },
-  neutral: { color: 0xe9e2cd, rough: 0.5, metal: 0.05 },
+type BodyLook = { color: number; rough: number; metal: number };
+
+const BODY_COLORS: Record<PiecePalette, Record<PieceOwner, BodyLook>> = {
+  pintado: {
+    rojo: { color: 0x74352a, rough: 0.35, metal: 0.1 },
+    dorado: { color: 0xbf9434, rough: 0.42, metal: 0.3 },
+    neutral: { color: 0xe9e2cd, rough: 0.5, metal: 0.05 },
+  },
+  madera: {
+    // sin barniz: mucha rugosidad y nada de metal, para que se lea la talla
+    rojo: { color: 0x5e3320, rough: 0.72, metal: 0.0 },
+    dorado: { color: 0xd8bb84, rough: 0.68, metal: 0.0 },
+    neutral: { color: 0xefe6d0, rough: 0.62, metal: 0.0 },
+  },
 };
 
-function mats(owner: PieceOwner): Mats {
-  let m = matsCache.get(owner);
+const ACCENT: Record<PiecePalette, number> = { pintado: 0xd9b673, madera: 0xc9a227 };
+
+const matsCache = new Map<string, Mats>();
+
+function mats(owner: PieceOwner, palette: PiecePalette): Mats {
+  const key = palette + ':' + owner;
+  let m = matsCache.get(key);
   if (!m) {
-    const body = BODY_COLORS[owner];
+    const body = BODY_COLORS[palette][owner];
     m = {
       body: new THREE.MeshStandardMaterial({ color: body.color, roughness: body.rough, metalness: body.metal }),
-      gold: new THREE.MeshStandardMaterial({ color: 0xd9b673, roughness: 0.3, metalness: 0.85 }),
+      gold: new THREE.MeshStandardMaterial({ color: ACCENT[palette], roughness: 0.3, metalness: 0.85 }),
       blue: new THREE.MeshStandardMaterial({ color: 0x4a7f9e, roughness: 0.35, metalness: 0.2 }),
     };
-    matsCache.set(owner, m);
+    matsCache.set(key, m);
   }
   return m;
 }
@@ -236,8 +256,8 @@ function buildSacerdote(g: THREE.Group, m: Mats): void {
   add(g, new THREE.SphereGeometry(0.55, 14, 10), m.body, [0, 7.5, 0]);
 }
 
-export function buildPieceMesh(type: PieceType, owner: PieceOwner): THREE.Group {
-  const m = mats(owner);
+export function buildPieceMesh(type: PieceType, owner: PieceOwner, palette: PiecePalette = 'pintado'): THREE.Group {
+  const m = mats(owner, palette);
   const group = new THREE.Group();
   switch (type) {
     case 'VI':
