@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>El Olimpo — juego de 1891</title>
+  <script type="module" src="/src/main.ts"></script>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="banner" hidden></div>
+
+  <header>
+    <h1>EL OLIMPO</h1>
+    <div class="subtitle">Juego místico-filosófico-recreativo — recreación del original de 1891</div>
+  </header>
+
+  <!-- Menú principal -->
+  <div id="menu" class="card">
+    <h2>¿Cómo querés jugar?</h2>
+    <p>
+      Tablero circular de 126 casillas alrededor de la Divinidad. Ganás debilitando al rival y
+      ocupando las <b>Regiones</b> (el anillo central) con más piezas propias que él.
+    </p>
+    <button class="mode-btn" id="btnContinue" hidden>Continuar la partida guardada</button>
+    <button class="mode-btn" data-mode="ai">
+      Un jugador contra la IA
+      <small>Vos jugás con el bando rojo. La IA controla el dorado.</small>
+    </button>
+    <button class="mode-btn" data-mode="hotseat">
+      Dos jugadores (misma pantalla)
+      <small>Se turnan rojo y dorado en el mismo dispositivo.</small>
+    </button>
+    <div class="opts">
+      <label>Estilo del tablero:
+        <select id="boardStyle">
+          <option value="lamina" selected>Lámina original de 1891</option>
+          <option value="moderno">Moderno (anillos de color)</option>
+        </select>
+      </label>
+      <label id="diffRow">Dificultad de la IA:
+        <select id="difficulty">
+          <option value="1">Fácil</option>
+          <option value="2" selected>Media</option>
+          <option value="3">Difícil</option>
+        </select>
+      </label>
+      <label title="Regla original: se puede mover una Virtud del rival para salvarla si está amenazada">
+        <input type="checkbox" id="optVirtudRival" checked />
+        Permitir salvar Virtudes del rival (regla original)
+      </label>
+    </div>
+    <p class="fine">
+      Geometría fiel al libro: Regiones (6), Tiempo (12), cuatro anillos de Pasiones (24 c/u) y
+      Averno (12). <a id="verReglas1" href="#">Ver las reglas completas</a>.
+    </p>
+  </div>
+
+  <!-- Juego -->
+  <div id="game" hidden>
+    <div id="hud">
+      <div class="pill" id="turnPill">Turno: —</div>
+      <div class="pill"><span class="swatch rojo"></span>Regiones: <b id="regRojo">0</b></div>
+      <div class="pill"><span class="swatch dorado"></span>Regiones: <b id="regDorado">0</b></div>
+      <button class="ctrl" id="btnCangeo" hidden>Cangear el Diablo</button>
+      <button class="ctrl" id="btnScore">Terminar y contar</button>
+      <button class="ctrl" id="btnRules">Reglas</button>
+      <button class="ctrl" id="btnSound" title="Sonido">🔊</button>
+      <button class="ctrl" id="btnMenu">← Menú</button>
+    </div>
+    <div id="layout">
+      <div id="boardWrap"></div>
+      <aside id="side">
+        <h3>Historial</h3>
+        <ol id="history"></ol>
+        <div id="captured">
+          <div><span class="swatch rojo"></span> perdidas: <span id="lostRojo">—</span></div>
+          <div><span class="swatch dorado"></span> perdidas: <span id="lostDorado">—</span></div>
+        </div>
+        <div id="pieceLegend"></div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Modal de reglas -->
+  <div id="rulesModal" class="modal" hidden>
+    <div class="modal-box">
+      <button class="ctrl close" id="btnCloseRules">✕ cerrar</button>
+      <div id="rulesContent" class="rules"></div>
+    </div>
+  </div>
+
+  <footer>
+    Recreación digital de «El Olimpo», descripto en un libro español de 1891 y nunca publicado
+    como juego físico. Tablero y piezas según el rediseño incluido en <i>diseno/</i>.
+  </footer>
+
+</body>
+</html>
