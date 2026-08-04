@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El Olimpo — prototipo jugable</title>
+<style>
+  :root{
+    --paper:#f2e9d3; --paper2:#e9dcbb; --ink:#3a2a18; --ink-soft:#5b4632;
+    --gold:#b6862f; --gold-light:#d9b673; --red:#8f2c2c; --rose:#dcb2a8;
+    --charcoal:#372f28; --blue:#c7dbd6; --cream:#efe2b8;
+    --rojo-team:#8f2c2c; --dorado-team:#b6862f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:radial-gradient(circle at 50% 30%, var(--paper), var(--paper2));
+    font-family:Georgia, 'Times New Roman', serif; color:var(--ink);
+    display:flex; flex-direction:column; align-items:center; padding:24px 12px 60px;
+  }
+  h1{ letter-spacing:8px; font-size:2.1rem; margin:6px 0 2px; }
+  .subtitle{ font-style:italic; color:var(--ink-soft); margin-bottom:18px; font-size:0.95rem; text-align:center;}
+  #menu{
+    background:rgba(255,255,255,0.35); border:1.5px solid var(--gold); border-radius:14px;
+    padding:26px 30px; max-width:520px; text-align:center; box-shadow:0 8px 24px rgba(0,0,0,0.12);
+  }
+  #menu h2{ margin-top:0; font-size:1.3rem; }
+  #menu p{ font-size:0.92rem; line-height:1.5; color:var(--ink-soft); }
+  .mode-btn{
+    display:block; width:100%; margin:10px 0; padding:14px 16px; font-family:inherit; font-size:1rem;
+    border:1.5px solid var(--ink); background:var(--gold-light); color:var(--ink); border-radius:10px;
+    cursor:pointer; transition:transform .12s ease, background .12s ease;
+  }
+  .mode-btn:hover{ background:var(--gold); transform:translateY(-1px); }
+  .mode-btn small{ display:block; font-weight:normal; font-style:italic; opacity:.75; margin-top:3px;}
+
+  #game{ width:100%; max-width:1000px; display:flex; flex-direction:column; align-items:center; }
+  #hud{
+    display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:center;
+    margin-bottom:12px; width:100%;
+  }
+  .pill{
+    background:rgba(255,255,255,0.55); border:1px solid var(--ink); border-radius:20px;
+    padding:6px 16px; font-size:0.88rem; display:flex; align-items:center; gap:8px;
+  }
+  .swatch{ width:14px; height:14px; border-radius:50%; border:1px solid var(--ink); display:inline-block; }
+  #turnPill{ font-weight:bold; }
+  button.ctrl{
+    font-family:inherit; background:var(--paper2); border:1px solid var(--ink); border-radius:8px;
+    padding:6px 14px; cursor:pointer; font-size:0.85rem;
+  }
+  button.ctrl:hover{ background:var(--gold-light); }
+
+  #boardWrap{ position:relative; }
+  canvas{ background:transparent; touch-action:none; }
+  #log{
+    width:100%; max-width:900px; margin-top:14px; max-height:120px; overflow-y:auto;
+    background:rgba(255,255,255,0.4); border:1px solid var(--ink-soft); border-radius:8px;
+    padding:8px 14px; font-size:0.82rem; line-height:1.5;
+  }
+  #banner{
+    position:fixed; top:0; left:0; right:0; background:var(--ink); color:var(--paper);
+    text-align:center; padding:14px; font-size:1.1rem; letter-spacing:1px; display:none; z-index:10;
+  }
+  .legend-row{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:10px; font-size:0.78rem; color:var(--ink-soft);}
+  a.back{ font-size:0.8rem; color:var(--ink-soft); cursor:pointer; text-decoration:underline; }
+  footer{ margin-top:22px; font-size:0.72rem; color:var(--ink-soft); text-align:center; max-width:640px; font-style:italic; }
+</style>
+</head>
+<body>
+
+<div id="banner"></div>
+<h1>EL OLIMPO</h1>
+<div class="subtitle">Prototipo jugable — adaptación libre del juego descripto en un libro de 1891</div>
+
+<div id="menu">
+  <h2>¿Cómo querés jugar?</h2>
+  <p>Tablero circular, 6 anillos concéntricos alrededor de la Divinidad. Ganás debilitando al rival y ocupando las Regiones (el anillo central) con más piezas propias que él.</p>
+  <button class="mode-btn" onclick="startGame('ai')">Un jugador contra la IA
+    <small>Vos jugás con el bando rojo. La IA controla el bando dorado.</small>
+  </button>
+  <button class="mode-btn" onclick="startGame('hotseat')">Dos jugadores (misma pantalla)
+    <small>Se turnan rojo y dorado en el mismo dispositivo.</small>
+  </button>
+  <p style="margin-top:16px;font-size:0.78rem;">Nota: para que sea jugable, esta versión simplifica el tablero original a 6 anillos de 24 casillas cada uno (en el libro los anillos tienen distinta cantidad de casillas). Las reglas de movimiento y captura de cada pieza sí respetan el texto original.</p>
+</div>
+
+<div id="game" style="display:none;">
+  <div id="hud">
+    <div class="pill" id="turnPill">Turno: —</div>
+    <div class="pill"><span class="swatch" style="background:var(--rojo-team)"></span>Regiones rojas: <b id="regRojo">0</b></div>
+    <div class="pill"><span class="swatch" style="background:var(--dorado-team)"></span>Regiones doradas: <b id="regDorado">0</b></div>
+    <button class="ctrl" onclick="endAndScore()">Terminar y contar</button>
+    <button class="ctrl" onclick="restart()">Reiniciar</button>
+    <a class="back" onclick="backToMenu()">← elegir modo</a>
+  </div>
+  <div id="boardWrap">
+    <canvas id="board" width="900" height="900"></canvas>
+  </div>
+  <div class="legend-row" id="pieceLegend"></div>
+  <div id="log"></div>
+</div>
+
+<footer>
+  Adaptación digital de "El Olimpo", juego místico-filosófico-recreativo publicado en un libro español de 1891.
+  Distancias y capturas por pieza tomadas del texto original; la cuadrícula angular uniforme y el tamaño de los anillos son una simplificación de diseño para hacerlo jugable.
+</footer>
+
+<script>
+/* ============ MODELO DE TABLERO ============ */
+const RING_COUNT = 6; // 0 Regiones,1 Tiempo,2 Pasiones,3 Idolos,4 Ejercito,5 Averno
+const SECTORS = 24;
+const RING_NAMES = ["Regiones","Tiempo","Pasiones","Ídolos","Ejército","Averno"];
+const RING_COLORS = [
+  ["#efe2b8","#e6d6a0"], // Regiones
+  ["#c7dbd6","#dbe9e5"], // Tiempo
+  ["#372f28","#dcb2a8"], // Pasiones
+  ["#372f28","#dcb2a8"], // Idolos
+  ["#372f28","#dcb2a8"], // Ejercito
+  ["#8f2c2c","#a53a3a"], // Averno
+];
+const MERIDIAN_AT = 0; // boundary between sector 23/0 and 11/12 -> half A = 0..11, half B = 12..23
+
+const TYPES = {
+  DI: {name:"Divinidad", label:"DI"},
+  VI: {name:"Virtud",    label:"VI"},
+  ID: {name:"Ídolo",     label:"ID"},
+  PO: {name:"Pontífice", label:"PO"},
+  PU: {name:"Pueblo",    label:"PU"},
+  CU: {name:"Cura",      label:"CU"},
+  DB: {name:"Diablo",    label:"DB"},
+};
+
+function mod(n,m){ return ((n%m)+m)%m; }
+function key(r,s){ return r+"-"+mod(s,SECTORS); }
+
+let state; // {pieces:[], turn:'rojo'|'dorado', mode:'ai'|'hotseat', selected:null, over:false}
+
+function freshPieces(){
+  const pieces = [];
+  let id = 0;
+  function add(type, owner, ring, sector){
+    pieces.push({id:id++, type, owner, ring, sector, alive:true});
+  }
+  // dos mitades: rojo en sectores 0..11 (centrado en 6), dorado en 12..23 (centrado en 18)
+  const halves = [
+    {owner:"rojo",   center:6},
+    {owner:"dorado", center:18},
+  ];
+  halves.forEach(h=>{
+    add("DB", h.owner, 5, h.center); // Diablo en el Averno
+    [-3,0,3].forEach(off=> add("ID", h.owner, 3, h.center+off)); // 3 idolos
+    [-3,0,3].forEach(off=> add("VI", h.owner, 1, h.center+off)); // 3 virtudes
+    // ejercito: 3 pontifices, 6 curas, 2 pueblos repartidos en ring4, sectores center-5..center+5
+    const slots = [];
+    for(let o=-5;o<=5;o++) slots.push(h.center+o);
+    // orden: cura, cura, pontifice, cura, pueblo, PAPA(pontifice central), pueblo, cura, pontifice, cura, cura
+    const order = ["CU","CU","PO","CU","PU","PO","PU","CU","PO","CU","CU"];
+    order.forEach((t,i)=> add(t, h.owner, 4, slots[i]));
+  });
+  add("DI","neutral",-1,0); // divinidad: fuera de la grilla (ring -1 = centro), inamovible
+  return pieces;
+}
+
+function pieceAt(pieces, ring, sector){
+  if(ring<0) return null;
+  return pieces.find(p=>p.alive && p.ring===ring && mod(p.sector,SECTORS)===mod(sector,SECTORS)) || null;
+}
+
+/* ============ REGLAS DE MOVIMIENTO ============ */
+// devuelve lista de {ring,sector,capture:bool}
+function legalMoves(piece, pieces){
+  if(piece.type==="DI") return [];
+  const res = [];
+  const tryDest = (ring, sector, opts={})=>{
+    if(ring<0 || ring>=RING_COUNT) return;
+    const occ = pieceAt(pieces, ring, sector);
+    if(opts.onlyCapture){
+      if(occ && occ.owner!==piece.owner && occ.type!=="DI") res.push({ring,sector,capture:true});
+      return;
+    }
+    if(opts.onlyEmpty){
+      if(!occ) res.push({ring,sector,capture:false});
+      return;
+    }
+    // por defecto: vacio -> mover, enemigo -> capturar, propio -> bloqueado
+    if(!occ) res.push({ring,sector,capture:false});
+    else if(occ.owner!==piece.owner && occ.type!=="DI") res.push({ring,sector,capture:true});
+  };
+
+  if(piece.type==="VI"){
+    // solo dentro de Regiones(0) y Tiempo(1); 1 paso en cualquier direccion incl. diagonal; nunca captura
+    for(let dr=-1; dr<=1; dr++){
+      for(let ds=-1; ds<=1; ds++){
+        if(dr===0 && ds===0) continue;
+        const nr = piece.ring+dr;
+        if(nr!==0 && nr!==1) continue;
+        tryDest(nr, piece.sector+ds, {onlyEmpty:true});
+      }
+    }
+  } else if(piece.type==="ID"){
+    for(const d of [-2,-1,1,2]) tryDest(piece.ring+d, piece.sector);
+    for(const d of [-3,-2,-1,1,2,3]) tryDest(piece.ring, piece.sector+d);
+  } else if(piece.type==="PO"){
+    for(const d of [-1,1]) tryDest(piece.ring+d, piece.sector);
+    for(const d of [-2,-1,1,2]) tryDest(piece.ring, piece.sector+d);
+  } else if(piece.type==="PU"){
+    // mover ortogonal 1 (solo vacio)
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr,ds])=> tryDest(piece.ring+dr, piece.sector+ds, {onlyEmpty:true}));
+    // capturar en las 8 vecinas
+    for(let dr=-1; dr<=1; dr++) for(let ds=-1; ds<=1; ds++){
+      if(dr===0 && ds===0) continue;
+      tryDest(piece.ring+dr, piece.sector+ds, {onlyCapture:true});
+    }
+  } else if(piece.type==="CU"){
+    [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([dr,ds])=> tryDest(piece.ring+dr, piece.sector+ds));
+  } else if(piece.type==="DB"){
+    const inAverno = piece.ring===5;
+    const maxR = inAverno? 2:3;
+    const maxS = inAverno? 2:4;
+    for(let d=1; d<=maxR; d++){ tryDest(piece.ring+d, piece.sector); tryDest(piece.ring-d, piece.sector); }
+    for(let d=1; d<=maxS; d++){ tryDest(piece.ring, piece.sector+d); tryDest(piece.ring, piece.sector-d); }
+  }
+  // dedup
+  const seen = new Set(); const out=[];
+  for(const m of res){ const k=key(m.ring,m.sector); if(!seen.has(k)){ seen.add(k); out.push(m);} }
+  return out;
+}
+
+function allLegalMoves(owner, pieces){
+  const out = [];
+  pieces.filter(p=>p.alive && p.owner===owner && p.type!=="DI").forEach(p=>{
+    legalMoves(p, pieces).forEach(m=> out.push({piece:p, dest:m}));
+  });
+  return out;
+}
+
+/* ============ ESTADO / TURNOS ============ */
+function newState(mode){
+  return { pieces: freshPieces(), turn:"rojo", mode, selected:null, over:false, log:[] };
+}
+
+function logMsg(msg){
+  state.log.unshift(msg);
+  if(state.log.length>40) state.log.pop();
+  document.getElementById("log").innerHTML = state.log.map(m=>`<div>${m}</div>`).join("");
+}
+
+function applyMove(piece, dest){
+  const target = pieceAt(state.pieces, dest.ring, dest.sector);
+  const other = state.turn==="rojo"?"dorado":"rojo";
+  if(target && target.owner!==piece.owner){
+    target.alive = false;
+    logMsg(`<b>${state.turn}</b>: ${TYPES[piece.type].name} captura ${TYPES[target.type].name} de ${other} en anillo ${dest.ring+1}.`);
+  } else {
+    logMsg(`<b>${state.turn}</b>: ${TYPES[piece.type].name} se mueve al anillo ${dest.ring+1}.`);
+  }
+  piece.ring = dest.ring;
+  piece.sector = mod(dest.sector, SECTORS);
+}
+
+function checkVictory(){
+  const rojoAlive = state.pieces.some(p=>p.alive && p.owner==="rojo");
+  const doradoAlive = state.pieces.some(p=>p.alive && p.owner==="dorado");
+  if(!rojoAlive){ showBanner("¡Gana el bando DORADO! El rojo perdió todas sus piezas."); state.over=true; return true;}
+  if(!doradoAlive){ showBanner("¡Gana el bando ROJO! El dorado perdió todas sus piezas."); state.over=true; return true;}
+  return false;
+}
+
+function regionCounts(){
+  const rojo = state.pieces.filter(p=>p.alive && p.owner==="rojo" && p.ring===0).length;
+  const dorado = state.pieces.filter(p=>p.alive && p.owner==="dorado" && p.ring===0).length;
+  return {rojo, dorado};
+}
+
+function endAndScore(){
+  const {rojo,dorado} = regionCounts();
+  if(rojo>dorado) showBanner(`Fin de la partida. ROJO controla más Regiones (${rojo} vs ${dorado}). ¡Gana rojo!`);
+  else if(dorado>rojo) showBanner(`Fin de la partida. DORADO controla más Regiones (${dorado} vs ${rojo}). ¡Gana dorado!`);
+  else showBanner(`Fin de la partida. Empate en Regiones (${rojo} vs ${dorado}). ¡Tablas!`);
+  state.over = true;
+}
+
+function showBanner(text){
+  const b = document.getElementById("banner");
+  b.textContent = text + "  (podés reiniciar cuando quieras)";
+  b.style.display = "block";
+  setTimeout(()=>{ b.style.display="none"; }, 5200);
+}
+
+/* ============ IA SIMPLE ============ */
+function aiPlay(){
+  if(state.over) return;
+  const moves = allLegalMoves("dorado", state.pieces);
+  if(moves.length===0){ endAndScore(); return; }
+  const score = (m)=>{
+    const target = pieceAt(state.pieces, m.dest.ring, m.dest.sector);
+    let s = Math.random()*4;
+    if(target && target.owner==="rojo"){
+      if(target.type==="DB") s += 1000;
+      else if(target.type==="ID"||target.type==="PO") s += 200;
+      else s += 80;
+    }
+    if(m.dest.ring===0 && !target) s += 50;
+    return s;
+  };
+  moves.sort((a,b)=> score(b)-score(a));
+  const chosen = moves[0];
+  applyMove(chosen.piece, chosen.dest);
+  if(checkVictory()){ draw(); return; }
+  state.turn = "rojo";
+  updateHud();
+  draw();
+}
+
+/* ============ RENDER ============ */
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+const CX=450, CY=450;
+const RING_R = [ [40,105],[105,165],[165,225],[225,285],[285,345],[345,405] ];
+const CENTER_R = 40;
+
+function angFor(sector){ return (sector/SECTORS)*Math.PI*2 - Math.PI/2; }
+function polar(r, sector){
+  const a = angFor(sector);
+  return [CX + r*Math.cos(a), CY + r*Math.sin(a)];
+}
+
+function drawBoard(){
+  ctx.clearRect(0,0,900,900);
+  ctx.save();
+  // rings
+  for(let ring=0; ring<RING_COUNT; ring++){
+    const [r0,r1] = RING_R[ring];
+    for(let s=0; s<SECTORS; s++){
+      const a0 = angFor(s), a1 = angFor(s+1);
+      ctx.beginPath();
+      ctx.arc(CX,CY,r1,a0,a1);
+      ctx.arc(CX,CY,r0,a1,a0,true);
+      ctx.closePath();
+      ctx.fillStyle = RING_COLORS[ring][s%2];
+      ctx.fill();
+      ctx.strokeStyle = "rgba(58,42,24,0.35)";
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(CX,CY,r1,0,Math.PI*2); ctx.strokeStyle="#3a2a18"; ctx.lineWidth=1.4; ctx.stroke();
+  }
+  // centro Divinidad
+  ctx.beginPath(); ctx.arc(CX,CY,CENTER_R,0,Math.PI*2);
+  ctx.fillStyle="#d9b673"; ctx.fill(); ctx.strokeStyle="#3a2a18"; ctx.lineWidth=1.6; ctx.stroke();
+  ctx.fillStyle="#3a2a18"; ctx.font="bold 13px Georgia"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("DI", CX, CY);
+
+  // meridiana: linea diametral que separa el territorio de cada jugador
+  ctx.beginPath();
+  ctx.moveTo(...polar(RING_R[RING_COUNT-1][1], MERIDIAN_AT));
+  ctx.lineTo(...polar(RING_R[RING_COUNT-1][1], MERIDIAN_AT+12));
+  ctx.strokeStyle = "#8f2c2c"; ctx.lineWidth=3;
+  ctx.stroke();
+
+  // highlight legal destinations
+  if(state.selected){
+    const moves = legalMoves(state.selected, state.pieces);
+    moves.forEach(m=>{
+      const [r0,r1] = RING_R[m.ring];
+      const a0=angFor(m.sector), a1=angFor(m.sector+1);
+      ctx.beginPath();
+      ctx.arc(CX,CY,r1-3,a0,a1); ctx.arc(CX,CY,r0+3,a1,a0,true); ctx.closePath();
+      ctx.fillStyle = m.capture? "rgba(143,44,44,0.45)" : "rgba(70,130,80,0.35)";
+      ctx.fill();
+    });
+  }
+
+  // piezas
+  state.pieces.filter(p=>p.alive && p.type!=="DI").forEach(p=>{
+    const ringR = RING_R[p.ring];
+    const rMid = (ringR[0]+ringR[1])/2;
+    const [x,y] = polar(rMid, p.sector+0.5);
+    ctx.beginPath(); ctx.arc(x,y,17,0,Math.PI*2);
+    ctx.fillStyle = p.owner==="rojo" ? "#8f2c2c" : "#b6862f";
+    ctx.fill();
+    ctx.strokeStyle = (state.selected===p) ? "#1c8a3d" : "#22160c";
+    ctx.lineWidth = (state.selected===p) ? 3.5 : 1.4;
+    ctx.stroke();
+    ctx.fillStyle="#f2e9d3"; ctx.font="bold 11px Georgia"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(TYPES[p.type].label, x, y);
+  });
+  ctx.restore();
+}
+
+function draw(){ drawBoard(); }
+
+function cellFromXY(x,y){
+  const dx = x-CX, dy=y-CY;
+  const r = Math.sqrt(dx*dx+dy*dy);
+  if(r<CENTER_R) return {ring:-1, sector:0};
+  for(let ring=0; ring<RING_COUNT; ring++){
+    const [r0,r1] = RING_R[ring];
+    if(r>=r0 && r<=r1){
+      let a = Math.atan2(dy,dx) + Math.PI/2;
+      if(a<0) a += Math.PI*2;
+      const sector = Math.floor((a/(Math.PI*2))*SECTORS);
+      return {ring, sector};
+    }
+  }
+  return null;
+}
+
+canvas.addEventListener("click", (ev)=>{
+  if(state.over) return;
+  if(state.mode==="ai" && state.turn==="dorado") return; // espera a la IA
+  const rect = canvas.getBoundingClientRect();
+  const x = (ev.clientX-rect.left) * (900/rect.width);
+  const y = (ev.clientY-rect.top) * (900/rect.height);
+  const cell = cellFromXY(x,y);
+  if(!cell || cell.ring<0) { state.selected=null; draw(); return; }
+
+  if(state.selected){
+    const moves = legalMoves(state.selected, state.pieces);
+    const m = moves.find(mm=>mm.ring===cell.ring && mod(mm.sector,SECTORS)===mod(cell.sector,SECTORS));
+    if(m){
+      applyMove(state.selected, m);
+      state.selected = null;
+      if(checkVictory()){ updateHud(); draw(); return; }
+      state.turn = state.turn==="rojo" ? "dorado" : "rojo";
+      updateHud(); draw();
+      if(state.mode==="ai" && state.turn==="dorado"){
+        setTimeout(aiPlay, 650);
+      }
+      return;
+    }
+  }
+  const p = pieceAt(state.pieces, cell.ring, cell.sector);
+  if(p && p.owner===state.turn && p.type!=="DI"){
+    state.selected = p;
+  } else {
+    state.selected = null;
+  }
+  draw();
+});
+
+function updateHud(){
+  document.getElementById("turnPill").textContent = "Turno: " + (state.turn==="rojo" ? "ROJO" : "DORADO");
+  document.getElementById("turnPill").style.color = state.turn==="rojo" ? "#8f2c2c" : "#8a6a1f";
+  const {rojo,dorado} = regionCounts();
+  document.getElementById("regRojo").textContent = rojo;
+  document.getElementById("regDorado").textContent = dorado;
+}
+
+function buildLegend(){
+  const el = document.getElementById("pieceLegend");
+  el.innerHTML = Object.entries(TYPES).map(([k,v])=>{
+    if(k==="DI") return "";
+    return `<span><b>${v.label}</b> = ${v.name}</span>`;
+  }).join(" &nbsp;·&nbsp; ");
+}
+
+/* ============ ARRANQUE ============ */
+function startGame(mode){
+  state = newState(mode);
+  document.getElementById("menu").style.display="none";
+  document.getElementById("game").style.display="flex";
+  buildLegend();
+  logMsg("Partida iniciada. Modo: " + (mode==="ai" ? "un jugador vs IA" : "dos jugadores (hotseat)") + ".");
+  updateHud();
+  draw();
+}
+function restart(){ startGame(state.mode); }
+function backToMenu(){
+  document.getElementById("menu").style.display="block";
+  document.getElementById("game").style.display="none";
+}
+</script>
+</body>
+</html>
