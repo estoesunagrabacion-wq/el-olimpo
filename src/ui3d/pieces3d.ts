@@ -50,14 +50,30 @@ const BODY_COLORS: Record<PiecePalette, Record<PieceOwner, BodyLook>> = {
     neutral: { color: 0xe9e2cd, rough: 0.5, metal: 0.05 },
   },
   madera: {
-    // sin barniz: mucha rugosidad y nada de metal, para que se lea la talla
-    rojo: { color: 0x5e3320, rough: 0.72, metal: 0.0 },
-    dorado: { color: 0xd8bb84, rough: 0.68, metal: 0.0 },
-    neutral: { color: 0xefe6d0, rough: 0.62, metal: 0.0 },
+    // Sin barniz: mucha rugosidad y nada de metal, para que se lea la talla.
+    //
+    // Las maderas van a los extremos a propósito. El tablero de marquetería usa
+    // boj (d9c096) contra palisandro (5f3b28) en las Pasiones, y unas piezas en
+    // esos mismos tonos desaparecían sobre su propia casilla. Acebo —la madera
+    // más blanca que se usa en marquetería— y wengué quedan fuera de todo el
+    // rango del tablero, así que la pieza siempre se recorta contra la casilla.
+    rojo: { color: 0x33200f, rough: 0.74, metal: 0.0 },
+    dorado: { color: 0xf3e7c9, rough: 0.66, metal: 0.0 },
+    neutral: { color: 0xfaf3e2, rough: 0.6, metal: 0.0 },
   },
 };
 
 const ACCENT: Record<PiecePalette, number> = { pintado: 0xd9b673, madera: 0xc9a227 };
+
+/**
+ * Peana: una sola madera para los dos bandos, como en un juego real, donde
+ * las bases salen todas de la misma tabla. Dándole un tono por bando la peana
+ * de las piezas oscuras quedaba casi igual al cuerpo y no se leía.
+ */
+const PLINTH: Record<PiecePalette, number> = {
+  pintado: 0x5a3c22,
+  madera: 0x8a6a3c,
+};
 
 const matsCache = new Map<string, Mats>();
 
@@ -268,30 +284,71 @@ function buildSacerdote(g: THREE.Group, m: Mats): void {
   add(g, new THREE.SphereGeometry(0.55, 14, 10), m.body, [0, 7.5, 0]);
 }
 
+/** Alto total de la peana; el cuerpo de la pieza se apoya encima. */
+const PLINTH_H = 0.85;
+
+/**
+ * Peana escalonada, como la que muestra el rediseño de `docs/`: dos discos en
+ * una madera más oscura que el cuerpo.
+ *
+ * Además de acercar la pieza al dibujo de referencia, la despega de la casilla:
+ * antes el pie se fundía con la loseta y no quedaba claro dónde terminaba una
+ * y empezaba la otra.
+ */
+function buildPeana(g: THREE.Group, color: number, radio: number): void {
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.05 });
+  const bajo = new THREE.Mesh(
+    toCreasedNormals(new THREE.CylinderGeometry(radio, radio * 1.06, 0.5, 40), ARISTA_VIVA),
+    mat,
+  );
+  bajo.position.y = 0.25;
+  bajo.castShadow = true;
+  bajo.receiveShadow = true;
+  g.add(bajo);
+  const alto = new THREE.Mesh(
+    toCreasedNormals(new THREE.CylinderGeometry(radio * 0.86, radio * 0.94, 0.35, 40), ARISTA_VIVA),
+    mat,
+  );
+  alto.position.y = 0.675;
+  alto.castShadow = true;
+  g.add(alto);
+}
+
+/** Radio de la peana por tipo, ajustado al ancho del pie de cada pieza. */
+const PLINTH_R: Record<PieceType, number> = {
+  DI: 4.3, VI: 4.0, ID: 3.9, PO: 3.5, PU: 3.9, CU: 3.2, DB: 4.1,
+};
+
 export function buildPieceMesh(type: PieceType, owner: PieceOwner, palette: PiecePalette = 'pintado'): THREE.Group {
   const m = mats(owner, palette);
   const group = new THREE.Group();
+  // el cuerpo se arma aparte y sube: así la peana se agrega una sola vez y no
+  // hay que recorrer las siete constructoras cambiando todas sus alturas
+  const cuerpo = new THREE.Group();
+  cuerpo.position.y = PLINTH_H;
+  group.add(cuerpo);
+  buildPeana(group, PLINTH[palette], PLINTH_R[type]);
   switch (type) {
     case 'VI':
-      buildVirtud(group, m);
+      buildVirtud(cuerpo, m);
       break;
     case 'DI':
-      buildDivinidad(group, m);
+      buildDivinidad(cuerpo, m);
       break;
     case 'PU':
-      buildPueblo(group, m);
+      buildPueblo(cuerpo, m);
       break;
     case 'PO':
-      buildPontifice(group, m);
+      buildPontifice(cuerpo, m);
       break;
     case 'DB':
-      buildDiablo(group, m);
+      buildDiablo(cuerpo, m);
       break;
     case 'ID':
-      buildIdolo(group, m);
+      buildIdolo(cuerpo, m);
       break;
     case 'CU':
-      buildSacerdote(group, m);
+      buildSacerdote(cuerpo, m);
       break;
   }
   return group;
