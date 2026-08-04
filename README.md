@@ -8,7 +8,14 @@ Esto es un intento de jugarlo.
 
 ## Jugar
 
-La forma más rápida es abrir **`builds/el-olimpo-v0.1.0.html`**: es un único archivo autocontenido, sin dependencias ni servidor. Doble clic y anda, incluso sin conexión. Necesita un navegador con WebGL.
+Abrí cualquiera de los dos archivos de [`builds/`](builds/). Los dos son un único HTML autocontenido, sin dependencias ni servidor: doble clic y anda, incluso sin conexión.
+
+| Archivo | Peso | Tablero | Requiere |
+|---|---|---|---|
+| `el-olimpo-v0.1.0.html` | 613 kB | escena 3D orbitable, dos estilos | WebGL |
+| `el-olimpo-v0.1.0-liviano.html` | 52 kB | plano, dibujado en 2D | nada |
+
+La versión liviana es el mismo juego con las mismas reglas y la misma IA: solo cambia cómo se dibuja el tablero. Sirve para máquinas viejas, navegadores con la aceleración gráfica desactivada, o simplemente para mandar un archivo chico.
 
 Dos modos: contra la IA (tres dificultades) o dos jugadores en la misma pantalla. La partida se guarda sola en el navegador.
 
@@ -18,10 +25,12 @@ Dos modos: contra la IA (tres dificultades) o dos jugadores en la misma pantalla
 npm install
 npm run dev      # servidor de desarrollo en localhost:5173
 npm test         # 35 tests del motor de reglas
-npm run build    # genera dist/el-olimpo-v<versión>.html, autocontenido
+npm run build    # genera los dos HTML autocontenidos en dist/
 ```
 
-El build inlinea todo —JS, CSS, el worker de la IA y hasta las reglas en markdown— en un solo HTML. El nombre del archivo compartible sale de la versión en `package.json`.
+El build inlinea todo —JS, CSS, el worker de la IA y hasta las reglas en markdown— en un solo HTML. El nombre de los archivos sale de la versión en `package.json`.
+
+Son dos builds separados y no uno con una opción, porque el artefacto es un archivo único: `vite-plugin-singlefile` incrusta todo el JS, así que un `import()` diferido de three.js igual quedaría adentro. La única forma de que la versión liviana pese poco es que three.js no se importe nunca, y eso se logra sustituyendo el módulo `src/boardimpl.ts` por `src/boardimpl.liviano.ts` con un alias en `vite.liviano.config.ts`.
 
 ## El tablero
 
@@ -58,12 +67,17 @@ src/
 │   ├── apply.ts    aplicar jugadas y fin de partida
 │   └── ai.ts       negamax con poda alfa-beta
 ├── ai/worker.ts    la IA en un Web Worker, para no congelar la UI
-├── ui3d/           tablero, piezas y sonido en three.js
-├── ui/             geometría 2D, markdown y un renderer alternativo
+├── ui3d/           tablero y piezas en three.js, y el sonido
+├── ui/             geometría, markdown, y el tablero liviano en canvas 2D
+│   └── boardview.ts  el contrato que cumplen los dos tableros
+├── boardimpl.ts          tablero del build completo (3D)
+├── boardimpl.liviano.ts  tablero del build liviano (2D)
 └── main.ts         menú, interacción, HUD e historial
 ```
 
 El motor no sabe que existe una pantalla: no importa DOM ni three.js, y los tests lo ejercitan directamente. Toda la parte visual depende del motor, nunca al revés.
+
+`main.ts` tampoco sabe qué tablero tiene enfrente: lo pide siempre a `boardimpl` y lo usa a través de la interfaz `BoardView`. Cada build decide cuál de las dos implementaciones se compila.
 
 La IA es un negamax con poda alfa-beta y ordenamiento de jugadas. La evaluación pesa material, ocupación de Regiones y un leve gradiente de avance hacia el centro. Corre en un Web Worker; si el navegador no lo soporta, cae a ejecutarlo en el hilo principal.
 

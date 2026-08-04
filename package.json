@@ -6,7 +6,7 @@
   "description": "Recreación digital de 'El Olimpo', juego de mesa descripto en un libro español de 1891",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && vite build --config vite.liviano.config.ts",
     "postbuild": "node scripts/empaquetar.mjs",
     "preview": "vite preview",
     "test": "vitest run",

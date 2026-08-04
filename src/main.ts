@@ -1,4 +1,4 @@
-/** App: menú, modos de juego, interacción con el tablero 3D, HUD e historial. */
+/** App: menú, modos de juego, interacción con el tablero, HUD e historial. */
 
 import reglasMd from '../docs/reglas-el-olimpo.md?raw';
 import AiWorkerCtor from './ai/worker?worker&inline';
@@ -9,8 +9,11 @@ import { canjeOptions, canSelect, pieceAt, pieceDests } from './engine/rules';
 import type { GameResult, GameState, Move, MoveDest, Owner, Piece } from './engine/types';
 import { PIECE_NAMES } from './engine/types';
 import { mdToHtml } from './ui/markdown';
-import { Board3D, type BoardStyle } from './ui3d/board3d';
-import { makeIcons, type IconMap } from './ui3d/pieces3d';
+// El tablero entra siempre por `boardimpl`, nunca desde ui3d/: así el build
+// liviano lo cambia por su versión en canvas 2D con un alias y no arrastra
+// three.js. Ver src/ui/boardview.ts.
+import { BOARD_STYLES, createBoard, makeIcons, type BoardStyle } from './boardimpl';
+import type { BoardView, IconMap } from './ui/boardview';
 import { isMuted, setMuted, sfx } from './ui3d/sound';
 
 type Mode = 'ai' | 'hotseat';
@@ -31,20 +34,30 @@ let lastMove: { ring: number; idx: number }[] | null = null;
 
 const STYLE_KEY = 'el-olimpo-estilo';
 
+const DEFAULT_STYLE = BOARD_STYLES[0].value;
+
 function storedStyle(): BoardStyle {
   try {
-    return localStorage.getItem(STYLE_KEY) === 'moderno' ? 'moderno' : 'lamina';
+    const saved = localStorage.getItem(STYLE_KEY);
+    return BOARD_STYLES.some((s) => s.value === saved) ? (saved as BoardStyle) : DEFAULT_STYLE;
   } catch {
-    return 'lamina';
+    return DEFAULT_STYLE;
   }
 }
 
+/** Estilo elegido en el menú, o el único que ofrezca el build. */
+function chosenStyle(): BoardStyle {
+  const sel = document.getElementById('boardStyle') as HTMLSelectElement | null;
+  return (sel?.value as BoardStyle) ?? DEFAULT_STYLE;
+}
+
 /**
- * El tablero 3D y los iconos se crean recién al entrar a una partida: así el
- * menú funciona siempre, aun si WebGL falla o tarda (clave en mobile), y el
- * error se puede mostrar en pantalla en vez de matar todo el script.
+ * El tablero y los iconos se crean recién al entrar a una partida: así el
+ * menú funciona siempre, aun si el contexto gráfico falla o tarda (clave en
+ * mobile), y el error se puede mostrar en pantalla en vez de matar todo el
+ * script.
  */
-let board: Board3D | null = null;
+let board: BoardView | null = null;
 let icons: IconMap = new Map();
 
 function ensureGraphics(style: BoardStyle): boolean {
@@ -63,14 +76,17 @@ function ensureGraphics(style: BoardStyle): boolean {
       board = null;
     }
     if (!board) {
-      board = new Board3D($('boardWrap'), style);
+      board = createBoard($('boardWrap'), style);
       attachBoardInput();
       resize();
     }
     return true;
   } catch (err) {
-    console.error('No se pudo iniciar el tablero 3D:', err);
-    showBanner('No se pudo iniciar el tablero 3D (¿WebGL deshabilitado?). Probá con otro navegador.', true);
+    console.error('No se pudo iniciar el tablero:', err);
+    showBanner(
+      'No se pudo iniciar el tablero (¿WebGL deshabilitado?). Probá con otro navegador, o con la versión liviana del juego.',
+      true,
+    );
     return false;
   }
 }
@@ -400,7 +416,7 @@ canjeModal.addEventListener('click', (e) => {
 
 function startGame(m: Mode, resume?: { state: GameState; difficulty: number }): void {
   mode = m;
-  if (!ensureGraphics(($('boardStyle') as HTMLSelectElement).value as BoardStyle)) return;
+  if (!ensureGraphics(chosenStyle())) return;
   if (resume) {
     state = resume.state;
     difficulty = resume.difficulty;
@@ -490,7 +506,16 @@ function buildLegend(): void {
 }
 
 window.addEventListener('resize', resize);
-($('boardStyle') as HTMLSelectElement).value = storedStyle();
+// El selector de estilo se arma con lo que ofrezca el build y se esconde
+// cuando hay uno solo, que es el caso de la versión liviana.
+(() => {
+  const sel = document.getElementById('boardStyle') as HTMLSelectElement | null;
+  const fila = document.getElementById('boardStyleRow');
+  if (!sel) return;
+  sel.innerHTML = BOARD_STYLES.map((s) => `<option value="${s.value}">${s.label}</option>`).join('');
+  sel.value = storedStyle();
+  if (BOARD_STYLES.length < 2 && fila) fila.hidden = true;
+})();
 refreshContinue();
 
 // hook de inspección para depurar desde la consola del navegador
