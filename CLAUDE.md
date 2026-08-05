@@ -25,8 +25,8 @@ root**, and the TypeScript sources were **not** included. Concretely:
 - `index.html` at the root is **not a source file**: it is the 625 KB minified
   `vite-plugin-singlefile` build output, with JS, CSS, the AI worker and `reglas-el-olimpo.md`
   all inlined.
-- There is no `.gitignore`, so `node_modules/` shows up as untracked after `npm install`.
-  Stage files explicitly; never `git add -A`.
+- `.gitignore` covers only `node_modules/`, `dist/`, `*.local` and `.DS_Store`. Note that
+  `dist/` is ignored while the *built* `index.html` is committed at the root — see below.
 
 Current, verified state of the commands:
 
