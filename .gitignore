@@ -1,0 +1,10 @@
+# dependencias
+node_modules/
+
+# salida de build (el bundle publicable se versiona en builds/)
+dist/
+
+# logs y temporales
+*.log
+npm-debug.log*
+.DS_Store

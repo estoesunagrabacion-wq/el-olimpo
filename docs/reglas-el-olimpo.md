@@ -41,7 +41,7 @@ De adentro hacia afuera:
 - **Pontífice**: salta 1 casilla de frente/atrás o 2 de costado. Captura en todas esas direcciones.
 - **Pueblo**: avanza 1 casilla de frente, atrás o costado — pero solo en línea recta. Para *capturar*, en cambio, puede hacerlo en cualquier dirección (como el peón de ajedrez, que camina derecho pero come al sesgo).
 - **Cura**: se mueve siempre en diagonal, 1 casilla por vez, y captura en cualquier dirección donde pueda llegar.
-- **Diablo** (la pieza estrella): avanza o retrocede 3 casillas, o 4 de costado — salvo dentro del Averno, donde solo llega a 2. Captura todo lo que encuentre en su camino. Es tan importante que si muere, el jugador puede "cangearlo" (una sola vez por partida) por un Ídolo y un Cura, o por dos Curas y un Pontífice, y vuelve a aparecer en su casilla original del Averno.
+- **Diablo** (la pieza estrella): avanza o retrocede 3 casillas, o 4 de costado — salvo dentro del Averno, donde solo llega a 2. Captura todo lo que encuentre en su camino. Es tan importante que si muere, el jugador puede "canjearlo" (una sola vez por partida) por un Ídolo y un Cura, o por dos Curas y un Pontífice, y vuelve a aparecer en su casilla original del Averno.
 
 Todas las piezas —salvo la Virtud— pueden atacar y ser atacadas por cualquier otra, sin importar la categoría, siempre que estén dentro de su alcance de movimiento.
 
@@ -60,7 +60,7 @@ Todas las piezas —salvo la Virtud— pueden atacar y ser atacadas por cualquie
 - Una vez que soltás una pieza en una casilla, no la podés volver a tocar (no hay "me arrepiento"), salvo que el rival te lo permita.
 - Si le das ventaja a un rival más débil regalándole una pieza, él tiene derecho a salir primero.
 - Nadie está obligado a avisarle al otro que una pieza suya está en peligro (no hay "jaque" cantado en voz alta, aunque por cortesía se puede avisar).
-- Si un Diablo muere, se puede cangear como se explicó arriba, reapareciendo en su casilla de origen.
+- Si un Diablo muere, se puede canjear como se explicó arriba, reapareciendo en su casilla de origen.
 - Todas las piezas pueden atacarse entre sí dentro de su alcance, salvo las Virtudes, que nunca atacan y solo se cubren entre ellas (incluidas las del rival).
 
 ## Glosario original del libro

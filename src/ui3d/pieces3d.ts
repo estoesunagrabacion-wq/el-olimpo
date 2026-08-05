@@ -1,0 +1,396 @@
+/**
+ * Piezas 3D modeladas a partir de la lámina "Tamaño natural" del libro de
+ * 1891: cada tipo tiene su propio cuerpo torneado (LatheGeometry) y su remate
+ * característico — parasol (Virtud), globo sobre columna (Divinidad), copa
+ * gallonada (Pueblo), remate hendido (Pontífice), media luna (Diablo),
+ * cápsula coronada (Ídolo) y coronita (Sacerdote). Las alturas relativas
+ * también siguen la lámina.
+ * Además genera, con un renderer temporal, los iconos 2D (data-URL) que usan
+ * la leyenda y la lista de capturas.
+ */
+
+import * as THREE from 'three';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+import type { Owner, PieceType } from '../engine/types';
+
+/**
+ * Ángulo a partir del cual una arista del torneado se considera viva.
+ *
+ * LatheGeometry promedia las normales entre segmentos vecinos del perfil, así
+ * que los filetes y las gargantas —que en madera torneada son aristas netas—
+ * salían redondeados y las piezas parecían de cera. `toCreasedNormals` parte
+ * la normal donde el quiebre supera este umbral: la curva sigue suave y el
+ * filete vuelve a marcarse.
+ */
+const ARISTA_VIVA = THREE.MathUtils.degToRad(32);
+
+/** 'neutral' es la Divinidad: marfil con el globo azul de la lámina en color. */
+export type PieceOwner = Owner | 'neutral';
+
+interface Mats {
+  body: THREE.MeshStandardMaterial;
+  gold: THREE.MeshStandardMaterial;
+  blue: THREE.MeshStandardMaterial;
+}
+
+/**
+ * Acabado de las piezas.
+ *  - 'pintado': la lámina en color del libro, ocre contra caoba.
+ *  - 'madera': madera sin pintar, boj claro contra palisandro, con los remates
+ *    en latón. Es el que acompaña al tablero de marquetería.
+ */
+export type PiecePalette = 'pintado' | 'madera';
+
+type BodyLook = { color: number; rough: number; metal: number };
+
+const BODY_COLORS: Record<PiecePalette, Record<PieceOwner, BodyLook>> = {
+  pintado: {
+    rojo: { color: 0x74352a, rough: 0.35, metal: 0.1 },
+    dorado: { color: 0xbf9434, rough: 0.42, metal: 0.3 },
+    neutral: { color: 0xe9e2cd, rough: 0.5, metal: 0.05 },
+  },
+  madera: {
+    // Sin barniz: mucha rugosidad y nada de metal, para que se lea la talla.
+    //
+    // Las maderas van a los extremos a propósito. El tablero de marquetería usa
+    // boj (d9c096) contra palisandro (5f3b28) en las Pasiones, y unas piezas en
+    // esos mismos tonos desaparecían sobre su propia casilla. Acebo —la madera
+    // más blanca que se usa en marquetería— y wengué quedan fuera de todo el
+    // rango del tablero, así que la pieza siempre se recorta contra la casilla.
+    rojo: { color: 0x33200f, rough: 0.74, metal: 0.0 },
+    dorado: { color: 0xf3e7c9, rough: 0.66, metal: 0.0 },
+    neutral: { color: 0xfaf3e2, rough: 0.6, metal: 0.0 },
+  },
+};
+
+const ACCENT: Record<PiecePalette, number> = { pintado: 0xd9b673, madera: 0xc9a227 };
+
+/**
+ * Peana: una sola madera para los dos bandos, como en un juego real, donde
+ * las bases salen todas de la misma tabla. Dándole un tono por bando la peana
+ * de las piezas oscuras quedaba casi igual al cuerpo y no se leía.
+ */
+const PLINTH: Record<PiecePalette, number> = {
+  pintado: 0x5a3c22,
+  madera: 0x8a6a3c,
+};
+
+const matsCache = new Map<string, Mats>();
+
+function mats(owner: PieceOwner, palette: PiecePalette): Mats {
+  const key = palette + ':' + owner;
+  let m = matsCache.get(key);
+  if (!m) {
+    const body = BODY_COLORS[palette][owner];
+    m = {
+      body: new THREE.MeshStandardMaterial({ color: body.color, roughness: body.rough, metalness: body.metal }),
+      gold: new THREE.MeshStandardMaterial({ color: ACCENT[palette], roughness: 0.3, metalness: 0.85 }),
+      blue: new THREE.MeshStandardMaterial({ color: 0x4a7f9e, roughness: 0.35, metalness: 0.2 }),
+    };
+    matsCache.set(key, m);
+  }
+  return m;
+}
+
+function lathe(points: [number, number][], mat: THREE.Material, segments = 36): THREE.Mesh {
+  const pts = points.map(([x, y]) => new THREE.Vector2(x, y));
+  const mesh = new THREE.Mesh(toCreasedNormals(new THREE.LatheGeometry(pts, segments), ARISTA_VIVA), mat);
+  mesh.castShadow = true;
+  return mesh;
+}
+
+function add(
+  group: THREE.Group,
+  geo: THREE.BufferGeometry,
+  mat: THREE.Material,
+  pos: [number, number, number],
+  rot: [number, number, number] = [0, 0, 0],
+  scale: [number, number, number] = [1, 1, 1],
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(...pos);
+  mesh.rotation.set(...rot);
+  mesh.scale.set(...scale);
+  mesh.castShadow = true;
+  group.add(mesh);
+  return mesh;
+}
+
+/* ---------- una constructora por pieza, según la lámina ---------- */
+
+function buildVirtud(g: THREE.Group, m: Mats): void {
+  // cuerpo: zócalo, ánfora panzona, bola y cuello
+  g.add(
+    lathe(
+      [
+        [0, 0], [3.4, 0], [3.6, 0.5], [3.1, 1.2], [2.5, 1.6],
+        [2.9, 2.4], [3.15, 3.8], [2.9, 5.2], [2.1, 6.3], [1.35, 6.9],
+        [1.9, 7.3], [1.15, 7.8],
+        [1.95, 8.5], [2.2, 9.3], [1.8, 10.1], [0.85, 10.5], [0.7, 11.0], [0, 11.0],
+      ],
+      m.body,
+    ),
+  );
+  // Parasol: más ancho y más plano que el original. A escala de juego la
+  // Virtud se confundía con el Pueblo porque ambos rematan anchos; llevándolo
+  // a disco franco, la Virtud queda como la única de ala plana.
+  // 5.1 de radio y no más: la Virtud solo pisa Regiones y Tiempo, y la banda
+  // del Tiempo mide 10.5, así que el ala no debe pasar de 10.2 de diámetro
+  // para no montarse sobre el anillo vecino.
+  add(g, new THREE.ConeGeometry(5.1, 1.15, 32), m.body, [0, 11.7, 0]);
+  add(g, new THREE.CylinderGeometry(1.0, 1.3, 0.5, 20), m.body, [0, 12.5, 0]);
+  // capullo
+  add(g, new THREE.SphereGeometry(0.95, 18, 14), m.body, [0, 13.3, 0], [0, 0, 0], [1, 1.25, 1]);
+}
+
+function buildDivinidad(g: THREE.Group, m: Mats): void {
+  // plinto cuadrado
+  add(g, new THREE.BoxGeometry(6.8, 1.2, 6.8), m.body, [0, 0.6, 0]);
+  add(g, new THREE.BoxGeometry(5.6, 0.8, 5.6), m.body, [0, 1.6, 0]);
+  // collar de perlas
+  add(g, new THREE.TorusGeometry(2.15, 0.35, 10, 24), m.body, [0, 2.3, 0], [Math.PI / 2, 0, 0]);
+  // fuste estriado (cilindro con anillos)
+  add(g, new THREE.CylinderGeometry(1.9, 2.05, 8.2, 24), m.body, [0, 6.5, 0]);
+  add(g, new THREE.TorusGeometry(2.0, 0.22, 8, 24), m.body, [0, 6.3, 0], [Math.PI / 2, 0, 0]);
+  // capitel y ábaco
+  add(g, new THREE.CylinderGeometry(2.7, 1.95, 1.4, 24), m.body, [0, 11.3, 0]);
+  add(g, new THREE.BoxGeometry(5.6, 0.7, 5.6), m.body, [0, 12.3, 0]);
+  // el globo terráqueo con meridianos dorados
+  add(g, new THREE.SphereGeometry(3.1, 28, 20), m.blue, [0, 15.6, 0]);
+  add(g, new THREE.TorusGeometry(3.12, 0.07, 8, 48), m.gold, [0, 15.6, 0], [0, 0, 0]);
+  add(g, new THREE.TorusGeometry(3.12, 0.07, 8, 48), m.gold, [0, 15.6, 0], [0, Math.PI / 2, 0]);
+  add(g, new THREE.TorusGeometry(3.12, 0.07, 8, 48), m.gold, [0, 15.6, 0], [Math.PI / 2, 0, 0]);
+}
+
+function buildPueblo(g: THREE.Group, m: Mats): void {
+  // base de toros apilados
+  g.add(
+    lathe(
+      [
+        [0, 0], [3.3, 0], [3.4, 0.5], [2.9, 1.0], [3.2, 1.7], [2.5, 2.3],
+        [2.8, 3.0], [1.9, 3.6], [1.05, 4.1], [0.95, 4.8],
+      ],
+      m.body,
+    ),
+  );
+  // copa gallonada
+  g.add(
+    lathe(
+      [
+        [0.95, 4.8], [1.3, 5.2], [3.6, 6.3], [4.25, 7.6], [4.1, 8.1],
+        [3.45, 7.7], [1.15, 6.6], [0.75, 6.9], [0, 6.9],
+      ],
+      m.body,
+      32,
+    ),
+  );
+  // Copa abierta y sin el hongo que antes la coronaba: con el hongo la
+  // silueta era una bola sobre un ala y se leía igual que la Virtud. Ahora
+  // el Pueblo es el único que remata en cáliz vacío.
+}
+
+function buildPontifice(g: THREE.Group, m: Mats): void {
+  // cuerpo abarrilado
+  g.add(
+    lathe(
+      [
+        [0, 0], [2.8, 0], [2.9, 0.5], [2.4, 1.0],
+        [2.65, 1.7], [2.85, 2.9], [2.6, 4.1], [1.9, 4.9],
+        [2.2, 5.2], [1.3, 5.6],
+        [1.75, 6.2], [1.8, 7.0], [1.0, 7.9], [0.45, 8.5], [0, 8.6],
+      ],
+      m.body,
+    ),
+  );
+  // Remate hendido: dos puntas que se abren. Alargadas y separadas para que
+  // la horquilla se lea como tal y no como un cono romo.
+  const prong = new THREE.ConeGeometry(0.6, 3.0, 12);
+  add(g, prong, m.body, [-0.95, 9.8, 0], [0, 0, 0.42]);
+  add(g, prong, m.body, [0.95, 9.8, 0], [0, 0, -0.42]);
+}
+
+function buildDiablo(g: THREE.Group, m: Mats): void {
+  // cuerpo anguloso de discos y biconos
+  g.add(
+    lathe(
+      [
+        [0, 0], [3.1, 0], [3.2, 0.5], [2.6, 1.0],
+        [3.3, 1.6], [2.3, 2.1],
+        [3.1, 3.1], [2.1, 4.0],
+        [2.8, 4.5], [1.7, 5.0],
+        [1.4, 5.7], [1.6, 6.3], [1.15, 6.9],
+        [1.75, 7.4], [1.05, 7.9], [0, 8.0],
+      ],
+      m.body,
+    ),
+  );
+  // la media luna, cuernos hacia arriba
+  const arc = Math.PI * 1.35;
+  // Es la única silueta asimétrica del juego, así que agrandarla es lo que
+  // más rinde: de lejos el Diablo se reconoce por la luna y nada más.
+  const moon = new THREE.Mesh(new THREE.TorusGeometry(3.3, 0.75, 12, 48, arc), m.body);
+  moon.position.set(0, 10.9, 0);
+  moon.rotation.z = -Math.PI / 2 - arc / 2; // arco simétrico con el hueco arriba
+  moon.castShadow = true;
+  g.add(moon);
+}
+
+function buildIdolo(g: THREE.Group, m: Mats): void {
+  // bulbo bajo y tallo anillado
+  g.add(
+    lathe(
+      [
+        [0, 0], [2.5, 0], [2.6, 0.5], [2.1, 0.9],
+        [2.4, 1.7], [2.6, 2.7], [2.0, 3.7], [1.1, 4.4],
+        [0.65, 5.0], [0.65, 7.6], [0, 7.6],
+      ],
+      m.body,
+    ),
+  );
+  add(g, new THREE.TorusGeometry(0.85, 0.22, 8, 20), m.body, [0, 5.6, 0], [Math.PI / 2, 0, 0]);
+  add(g, new THREE.TorusGeometry(0.85, 0.22, 8, 20), m.body, [0, 6.8, 0], [Math.PI / 2, 0, 0]);
+  // cápsula de amapola
+  add(g, new THREE.SphereGeometry(1.85, 22, 16), m.body, [0, 9.3, 0], [0, 0, 0], [1, 1.15, 1]);
+  // Corona de brotes, bastante más alta y abierta que la original: es lo
+  // único que separa al Ídolo del Cura a distancia, y con 0.8 de alto no se
+  // veía. Ahora sobresale de la cápsula y hace silueta erizada.
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    add(
+      g,
+      new THREE.ConeGeometry(0.34, 2.0, 8),
+      m.body,
+      [Math.cos(a) * 1.5, 11.9, Math.sin(a) * 1.5],
+      [Math.sin(a) * 0.42, 0, -Math.cos(a) * 0.42],
+    );
+  }
+}
+
+function buildSacerdote(g: THREE.Group, m: Mats): void {
+  // el peón: cuerpo pequeño torneado
+  g.add(
+    lathe(
+      [
+        [0, 0], [2.3, 0], [2.4, 0.45], [1.95, 0.85],
+        [2.15, 1.4], [2.35, 2.4], [1.85, 3.2], [1.15, 3.8],
+        [1.45, 4.1], [0.85, 4.5],
+        [1.4, 5.1], [1.45, 5.8], [0.95, 6.4], [0, 6.5],
+      ],
+      m.body,
+    ),
+  );
+  // coronita de cuatro puntas con botón central
+  add(g, new THREE.CylinderGeometry(1.35, 1.1, 0.7, 16), m.body, [0, 6.8, 0]);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    add(
+      g,
+      new THREE.ConeGeometry(0.36, 1.5, 8),
+      m.body,
+      [Math.cos(a) * 1.3, 7.75, Math.sin(a) * 1.3],
+      [Math.sin(a) * 0.38, 0, -Math.cos(a) * 0.38],
+    );
+  }
+  add(g, new THREE.SphereGeometry(0.55, 14, 10), m.body, [0, 7.5, 0]);
+}
+
+/** Alto total de la peana; el cuerpo de la pieza se apoya encima. */
+const PLINTH_H = 0.85;
+
+/**
+ * Peana escalonada, como la que muestra el rediseño de `docs/`: dos discos en
+ * una madera más oscura que el cuerpo.
+ *
+ * Además de acercar la pieza al dibujo de referencia, la despega de la casilla:
+ * antes el pie se fundía con la loseta y no quedaba claro dónde terminaba una
+ * y empezaba la otra.
+ */
+function buildPeana(g: THREE.Group, color: number, radio: number): void {
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.05 });
+  const bajo = new THREE.Mesh(
+    toCreasedNormals(new THREE.CylinderGeometry(radio, radio * 1.06, 0.5, 40), ARISTA_VIVA),
+    mat,
+  );
+  bajo.position.y = 0.25;
+  bajo.castShadow = true;
+  bajo.receiveShadow = true;
+  g.add(bajo);
+  const alto = new THREE.Mesh(
+    toCreasedNormals(new THREE.CylinderGeometry(radio * 0.86, radio * 0.94, 0.35, 40), ARISTA_VIVA),
+    mat,
+  );
+  alto.position.y = 0.675;
+  alto.castShadow = true;
+  g.add(alto);
+}
+
+/** Radio de la peana por tipo, ajustado al ancho del pie de cada pieza. */
+const PLINTH_R: Record<PieceType, number> = {
+  DI: 4.3, VI: 4.0, ID: 3.9, PO: 3.5, PU: 3.9, CU: 3.2, DB: 4.1,
+};
+
+export function buildPieceMesh(type: PieceType, owner: PieceOwner, palette: PiecePalette = 'pintado'): THREE.Group {
+  const m = mats(owner, palette);
+  const group = new THREE.Group();
+  // el cuerpo se arma aparte y sube: así la peana se agrega una sola vez y no
+  // hay que recorrer las siete constructoras cambiando todas sus alturas
+  const cuerpo = new THREE.Group();
+  cuerpo.position.y = PLINTH_H;
+  group.add(cuerpo);
+  buildPeana(group, PLINTH[palette], PLINTH_R[type]);
+  switch (type) {
+    case 'VI':
+      buildVirtud(cuerpo, m);
+      break;
+    case 'DI':
+      buildDivinidad(cuerpo, m);
+      break;
+    case 'PU':
+      buildPueblo(cuerpo, m);
+      break;
+    case 'PO':
+      buildPontifice(cuerpo, m);
+      break;
+    case 'DB':
+      buildDiablo(cuerpo, m);
+      break;
+    case 'ID':
+      buildIdolo(cuerpo, m);
+      break;
+    case 'CU':
+      buildSacerdote(cuerpo, m);
+      break;
+  }
+  return group;
+}
+
+export type IconMap = Map<string, string>;
+
+/** Renderiza cada pieza a un data-URL para la leyenda y las capturas. */
+export function makeIcons(): IconMap {
+  const map: IconMap = new Map();
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setSize(96, 96);
+  const scene = new THREE.Scene();
+  scene.add(new THREE.AmbientLight(0xfff2dd, 1.1));
+  const dir = new THREE.DirectionalLight(0xffffff, 2.2);
+  dir.position.set(20, 30, 25);
+  scene.add(dir);
+  const cam = new THREE.PerspectiveCamera(32, 1, 1, 200);
+  cam.position.set(11, 13, 24);
+  cam.lookAt(0, 6.2, 0);
+
+  const types: PieceType[] = ['VI', 'ID', 'PO', 'PU', 'CU', 'DB'];
+  const owners: Owner[] = ['rojo', 'dorado'];
+  for (const t of types) {
+    for (const o of owners) {
+      const piece = buildPieceMesh(t, o);
+      scene.add(piece);
+      renderer.render(scene, cam);
+      map.set(t + '-' + o, renderer.domElement.toDataURL());
+      scene.remove(piece);
+    }
+  }
+  renderer.dispose();
+  return map;
+}

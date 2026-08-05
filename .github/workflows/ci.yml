@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      # tsc corre por separado del build para que, si falla el tipado, el log
+      # diga eso y no quede escondido detrás de un error de Vite
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # el artefacto compartible queda descargable desde la corrida, así se
+      # puede probar un cambio sin clonar ni compilar nada
+      - uses: actions/upload-artifact@v4
+        with:
+          name: el-olimpo-html
+          path: dist/el-olimpo-v*.html
+          if-no-files-found: error
