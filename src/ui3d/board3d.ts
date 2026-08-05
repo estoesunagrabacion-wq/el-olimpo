@@ -487,6 +487,24 @@ export class Board3D {
   }
 
   /**
+   * La Divinidad, inmóvil en el centro y ajena a los dos bandos.
+   *
+   * La comparten los tres estilos —cada uno la apoya a la altura de su propio
+   * remate central— y por eso vive acá y no repetida en cada constructora: el
+   * estilo 'moderno' se había quedado sin ella justamente porque cada una
+   * armaba la suya por separado y esa se olvidó.
+   */
+  private addDivinidad(y: number): void {
+    const divinidad = buildPieceMesh('DI', 'neutral', this.piecePalette);
+    divinidad.position.set(0, y, 0);
+    divinidad.scale.setScalar(1.15);
+    divinidad.traverse((o) => {
+      o.raycast = noRaycast;
+    });
+    this.scene.add(divinidad);
+  }
+
+  /**
    * Ornamentos del estilo 'madera': filetes de latón embutidos entre anillos,
    * Meridiana embutida y roseta central.
    *
@@ -540,14 +558,7 @@ export class Board3D {
       this.thinStar(CENTER_R * BOARD_R * 0.66, CENTER_R * BOARD_R * 0.24, COL_NOGAL, -Math.PI / 2, y + 1.1),
     );
 
-    // la Divinidad, tallada en marfil como en la lámina
-    const divinidad = buildPieceMesh('DI', 'neutral', 'madera');
-    divinidad.position.set(0, y + 1.1, 0);
-    divinidad.scale.setScalar(1.15);
-    divinidad.traverse((o) => {
-      o.raycast = noRaycast;
-    });
-    this.scene.add(divinidad);
+    this.addDivinidad(y + 1.1);
   }
 
   private buildOrnaments(): void {
@@ -608,14 +619,7 @@ export class Board3D {
     sky.raycast = noRaycast;
     this.scene.add(sky);
 
-    // la Divinidad: ficha torneada clara con la esfera azul, inmóvil en el centro
-    const divinidad = buildPieceMesh('DI', 'neutral');
-    divinidad.position.set(0, BOARD_TOP + 0.9, 0);
-    divinidad.scale.setScalar(1.15);
-    divinidad.traverse((o) => {
-      o.raycast = noRaycast;
-    });
-    this.scene.add(divinidad);
+    this.addDivinidad(BOARD_TOP + 0.9);
   }
 
   /** Ornamentos del estilo 'moderno': medallón dorado, marcas y meridiana gruesa. */
@@ -633,6 +637,7 @@ export class Board3D {
     this.scene.add(medallion);
     const star = this.thinStar(CENTER_R * BOARD_R * 0.62, CENTER_R * BOARD_R * 0.26, 0x8a6a3c, -Math.PI / 2, top + 1.45);
     this.scene.add(star);
+    this.addDivinidad(top + 1.45);
 
     // Meridiana roja
     const len = (BORDER_R - CENTER_R - 0.02) * BOARD_R;
