@@ -1,0 +1,67 @@
+name: Impresora Xerox (APK)
+
+on:
+  push:
+    paths:
+      - "impresora-xerox/**"
+      - ".github/workflows/impresora-xerox.yml"
+  pull_request:
+    paths:
+      - "impresora-xerox/**"
+      - ".github/workflows/impresora-xerox.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: impresora-xerox
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Misma clave de firma entre compilaciones, para poder actualizar la app
+      # sin desinstalarla.
+      - name: Clave de firma de depuración
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: impresora-xerox-debug-keystore
+
+      - name: Tests del codificador QPDL
+        run: ./gradlew --no-daemon :qpdl:test
+
+      - name: Compilar APK
+        run: ./gradlew --no-daemon :app:assembleDebug
+
+      - name: Renombrar APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk ImpresoraXerox.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ImpresoraXerox-apk
+          path: impresora-xerox/ImpresoraXerox.apk
+
+      - name: Publicar en "Releases"
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: impresora-xerox-ultima
+          name: Impresora Xerox (última versión)
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          body: |
+            APK de la app "Impresora Xerox" para la Phaser 3020, compilada desde ${{ github.sha }}.
+            Instrucciones de instalación: impresora-xerox/README.md
+          files: impresora-xerox/ImpresoraXerox.apk

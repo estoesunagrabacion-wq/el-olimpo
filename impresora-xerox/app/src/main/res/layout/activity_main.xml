@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- 1. Archivo -->
+        <TextView style="@style/Seccion" android:text="@string/seccion_archivo" />
+
+        <TextView
+            android:id="@+id/tvArchivo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="6dp"
+            android:text="@string/sin_archivo"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/btnElegir"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/elegir_archivo" />
+
+        <!-- 2. Conexión -->
+        <TextView style="@style/Seccion" android:text="@string/seccion_conexion" />
+
+        <RadioGroup
+            android:id="@+id/rgConexion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/rbWifi"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="24dp"
+                android:text="@string/conexion_wifi" />
+
+            <RadioButton
+                android:id="@+id/rbUsb"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/conexion_usb" />
+        </RadioGroup>
+
+        <EditText
+            android:id="@+id/etIp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints=""
+            android:digits="0123456789."
+            android:hint="@string/hint_ip"
+            android:inputType="number"
+            android:maxLines="1" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnBuscar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="@string/buscar" />
+
+            <Button
+                android:id="@+id/btnProbar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/probar" />
+        </LinearLayout>
+
+        <!-- 3. Opciones -->
+        <TextView style="@style/Seccion" android:text="@string/seccion_opciones" />
+
+        <TextView style="@style/Etiqueta" android:text="@string/papel" />
+        <Spinner
+            android:id="@+id/spPapel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView style="@style/Etiqueta" android:text="@string/calidad" />
+        <Spinner
+            android:id="@+id/spModo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView style="@style/Etiqueta" android:text="@string/densidad" />
+        <Spinner
+            android:id="@+id/spDensidad"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView style="@style/Etiqueta" android:text="@string/copias" />
+                <EditText
+                    android:id="@+id/etCopias"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:autofillHints=""
+                    android:hint="1"
+                    android:inputType="number"
+                    android:maxLength="3"
+                    android:text="1" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:orientation="vertical">
+
+                <TextView style="@style/Etiqueta" android:text="@string/paginas" />
+                <EditText
+                    android:id="@+id/etPaginas"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:autofillHints=""
+                    android:digits="0123456789,- "
+                    android:hint="@string/hint_paginas"
+                    android:inputType="text"
+                    android:maxLines="1" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <CheckBox
+            android:id="@+id/cbAhorro"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ahorro" />
+
+        <CheckBox
+            android:id="@+id/cbManual"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/bandeja_manual" />
+
+        <!-- Acciones -->
+        <Button
+            android:id="@+id/btnImprimir"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/imprimir"
+            android:textSize="18sp" />
+
+        <Button
+            android:id="@+id/btnPrueba"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/prueba" />
+
+        <ProgressBar
+            android:id="@+id/pbProgreso"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvEstado"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:textIsSelectable="true"
+            android:textSize="15sp" />
+    </LinearLayout>
+</ScrollView>

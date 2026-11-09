@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cualquier dispositivo USB de clase "impresora" (7) -->
+    <usb-device class="7" />
+    <!-- Xerox -->
+    <usb-device vendor-id="2340" />
+</resources>
