@@ -103,6 +103,20 @@ object Red {
 object Usb {
     private const val ACCION_PERMISO = "ar.impresora.xerox.PERMISO_USB"
     private const val VENDOR_XEROX = 0x0924
+    private const val VENDOR_SAMSUNG = 0x04E8
+    private val VENDORS_CONOCIDOS = setOf(VENDOR_XEROX, VENDOR_SAMSUNG)
+
+    /** Lista legible de todos los dispositivos USB que Android puede ver (diagnóstico). */
+    fun describirDispositivos(contexto: Context): String {
+        val usb = contexto.getSystemService(Context.USB_SERVICE) as UsbManager
+        val lista = usb.deviceList.values
+        if (lista.isEmpty()) return "Android no ve ningún dispositivo USB."
+        return lista.joinToString("\n") { d ->
+            val clases = (0 until d.interfaceCount).joinToString(",") { d.getInterface(it).interfaceClass.toString() }
+            val nombre = listOfNotNull(d.manufacturerName, d.productName).joinToString(" ").ifBlank { "(sin nombre)" }
+            "• $nombre — %04X:%04X, clases [%s]".format(d.vendorId, d.productId, clases)
+        }
+    }
 
     class Impresora(val dispositivo: UsbDevice, val interfaz: UsbInterface, val salida: UsbEndpoint) {
         val nombre: String
@@ -116,7 +130,9 @@ object Usb {
         for (d in usb.deviceList.values) {
             for (i in 0 until d.interfaceCount) {
                 val intf = d.getInterface(i)
-                if (intf.interfaceClass != UsbConstants.USB_CLASS_PRINTER) continue
+                val esImpresora = intf.interfaceClass == UsbConstants.USB_CLASS_PRINTER ||
+                    (d.vendorId in VENDORS_CONOCIDOS && intf.interfaceClass == UsbConstants.USB_CLASS_VENDOR_SPEC)
+                if (!esImpresora) continue
                 for (e in 0 until intf.endpointCount) {
                     val ep = intf.getEndpoint(e)
                     if (ep.type == UsbConstants.USB_ENDPOINT_XFER_BULK && ep.direction == UsbConstants.USB_DIR_OUT) {

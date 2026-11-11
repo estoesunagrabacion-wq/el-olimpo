@@ -220,7 +220,9 @@ class MainActivity : Activity() {
         enSegundoPlano {
             if (usarUsb) {
                 val imp = Usb.buscar(this)
-                    ?: return@enSegundoPlano "No veo ninguna impresora USB. Conectá el cable y, si ChromeOS lo pregunta, elegí \"Conectar a Android\"."
+                    ?: return@enSegundoPlano "No veo ninguna impresora USB. Conectá el cable y, si ChromeOS lo pregunta, " +
+                        "elegí \"Conectar a Android\".\n\nDispositivos USB que ve Android:\n" +
+                        Usb.describirDispositivos(this)
                 if (Usb.pedirPermiso(this, imp.dispositivo)) "Impresora USB encontrada: ${imp.nombre}"
                 else "Encontré ${imp.nombre}, pero no se dio permiso para usarla."
             } else {
