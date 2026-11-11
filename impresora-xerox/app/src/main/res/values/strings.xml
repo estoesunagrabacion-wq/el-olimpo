@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Impresora Xerox</string>
+    <string name="seccion_archivo">1. Qué imprimir</string>
+    <string name="sin_archivo">Ningún archivo elegido</string>
+    <string name="elegir_archivo">Elegir PDF o imagen</string>
+    <string name="seccion_conexion">2. Cómo está conectada la impresora</string>
+    <string name="conexion_wifi">Wi-Fi / red</string>
+    <string name="conexion_usb">Cable USB</string>
+    <string name="hint_ip">IP de la impresora (ej. 192.168.0.25)</string>
+    <string name="buscar">Buscar en la red</string>
+    <string name="probar">Probar conexión</string>
+    <string name="seccion_opciones">3. Opciones</string>
+    <string name="papel">Papel</string>
+    <string name="calidad">Calidad</string>
+    <string name="densidad">Tóner</string>
+    <string name="copias">Copias</string>
+    <string name="paginas">Páginas</string>
+    <string name="hint_paginas">todas (o ej. 1-3,5)</string>
+    <string name="ahorro">Ahorrar tóner</string>
+    <string name="bandeja_manual">Usar bandeja manual</string>
+    <string name="imprimir">Imprimir</string>
+    <string name="prueba">Imprimir página de prueba</string>
+</resources>
