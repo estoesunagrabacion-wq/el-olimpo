@@ -353,8 +353,11 @@ class MainActivity : Activity() {
     }
 
     private fun mostrarEstadoServidor() {
+        val registro = Registro.leer(this)
+        val textoRegistro = if (registro.isEmpty()) "" else
+            "\n\nÚltimos trabajos desde otras apps:\n" + registro.joinToString("\n")
         if (!cbServidor.isChecked) {
-            tvServidor.text = "Desactivado."
+            tvServidor.text = "Impresora para ChromeOS desactivada.$textoRegistro"
             return
         }
         val dirs = ServicioIpp.direcciones()
@@ -367,7 +370,7 @@ class MainActivity : Activity() {
             append("\n• Protocolo: IPP\n• Cola: ipp/print\n")
             append("Para comprobar que ChromeOS la ve, abrí en Chrome: ")
             append(dirs.firstOrNull()?.let { "http://$it:$puerto" } ?: "-")
-            if (ServicioIpp.ultimoMensaje.isNotEmpty()) append("\n\nÚltimo: ${ServicioIpp.ultimoMensaje}")
+            append(textoRegistro)
         }
     }
 

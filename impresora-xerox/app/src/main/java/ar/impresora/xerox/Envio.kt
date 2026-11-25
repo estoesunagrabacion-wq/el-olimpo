@@ -64,6 +64,23 @@ data class Ajustes(
     }
 }
 
+/** Anota lo que pasa con los trabajos que llegan de otras apps, para mostrarlo en pantalla. */
+object Registro {
+    private const val MAX = 12
+
+    fun anotar(contexto: Context, mensaje: String) {
+        android.util.Log.i("ImpresoraXerox", mensaje)
+        val p = contexto.getSharedPreferences("registro", Context.MODE_PRIVATE)
+        val hora = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+        val lineas = (listOf("$hora  $mensaje") + leer(contexto)).take(MAX)
+        p.edit().putString("lineas", lineas.joinToString("\n")).apply()
+    }
+
+    fun leer(contexto: Context): List<String> =
+        contexto.getSharedPreferences("registro", Context.MODE_PRIVATE).getString("lineas", "")!!
+            .split("\n").filter { it.isNotBlank() }
+}
+
 /**
  * Cola única de impresión: la pantalla, el servicio de Android y el servidor
  * IPP mandan sus trabajos por acá, de a uno, para no pisarse en el USB.

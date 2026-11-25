@@ -11,8 +11,8 @@ android {
         applicationId = "ar.impresora.xerox"
         minSdk = 28
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3"
+        versionCode = 4
+        versionName = "0.4"
     }
 
     // Clave fija (sólo para esta app personal): así cada versión nueva se

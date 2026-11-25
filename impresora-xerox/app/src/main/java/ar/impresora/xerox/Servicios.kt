@@ -94,6 +94,7 @@ class ServicioImpresion : PrintService() {
     }
 
     override fun onPrintJobQueued(trabajo: PrintJob) {
+        Registro.anotar(this, "Android: llegó un trabajo (estado ${trabajo.info.state})")
         if (!trabajo.isQueued) return
         trabajo.start()
         val info = trabajo.info
@@ -101,6 +102,7 @@ class ServicioImpresion : PrintService() {
         val copias = info.copies.coerceIn(1, 99)
         val nombre = trabajo.document.info.name
         val datos = trabajo.document.data ?: run {
+            Registro.anotar(this, "Android: \"$nombre\" llegó sin datos")
             trabajo.fail("El documento llegó vacío")
             return
         }
@@ -109,11 +111,18 @@ class ServicioImpresion : PrintService() {
                 val pdf = File.createTempFile("android", ".pdf", cacheDir)
                 try {
                     ParcelFileDescriptor.AutoCloseInputStream(datos).use { e -> pdf.outputStream().use { e.copyTo(it) } }
+                    Registro.anotar(this, "Android: \"$nombre\" recibido (${pdf.length() / 1024} KB, ${papel ?: "papel por defecto"}, $copias copia/s). Convirtiendo y enviando…")
                     Trabajos.imprimirPdf(this, pdf, papel, copias, nombre)
                 } finally {
                     pdf.delete()
                 }
             }
+            resultado.onSuccess { Registro.anotar(this, "Android: \"$nombre\" enviado a la impresora ✔") }
+                .onFailure {
+                    val msg = it.message ?: it.javaClass.simpleName
+                    Registro.anotar(this, "Android: \"$nombre\" falló: $msg")
+                    avisarError(this, "No se pudo imprimir \"$nombre\"", msg)
+                }
             principal.post {
                 resultado.onSuccess { if (!trabajo.isCancelled) trabajo.complete() }
                     .onFailure { trabajo.fail(it.message ?: "Error al imprimir") }
@@ -175,10 +184,19 @@ class ServicioIpp : Service() {
             startForeground(1, aviso)
         }
         val impresor = Impresor { t, archivo, formato ->
-            if (formato == "application/pdf") {
-                Trabajos.imprimirPdf(this, archivo, t.papel, t.copias, t.nombre, t.usuario)
-            } else {
-                Trabajos.imprimirPwg(this, archivo, t.papel, t.copias, t.nombre, t.usuario)
+            Registro.anotar(this, "ChromeOS: \"${t.nombre}\" recibido ($formato, ${archivo.length() / 1024} KB). Convirtiendo y enviando…")
+            try {
+                if (formato == "application/pdf") {
+                    Trabajos.imprimirPdf(this, archivo, t.papel, t.copias, t.nombre, t.usuario)
+                } else {
+                    Trabajos.imprimirPwg(this, archivo, t.papel, t.copias, t.nombre, t.usuario)
+                }
+                Registro.anotar(this, "ChromeOS: \"${t.nombre}\" enviado a la impresora ✔")
+            } catch (e: Exception) {
+                val msg = e.message ?: e.javaClass.simpleName
+                Registro.anotar(this, "ChromeOS: \"${t.nombre}\" falló: $msg")
+                avisarError(this, "No se pudo imprimir \"${t.nombre}\"", msg)
+                throw e
             }
         }
         servidor = try {
@@ -224,6 +242,22 @@ class ServicioIpp : Service() {
                 .mapNotNull { it.hostAddress }
         }.getOrDefault(emptyList())
     }
+}
+
+/** Muestra una notificación con el error, para que no pase desapercibido. */
+fun avisarError(c: Context, titulo: String, mensaje: String) {
+    val nm = c.getSystemService(NotificationManager::class.java)
+    nm.createNotificationChannel(NotificationChannel("errores", "Errores de impresión", NotificationManager.IMPORTANCE_HIGH))
+    val abrir = PendingIntent.getActivity(c, 1, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+    val aviso = Notification.Builder(c, "errores")
+        .setSmallIcon(R.drawable.ic_notificacion)
+        .setContentTitle(titulo)
+        .setContentText(mensaje)
+        .setStyle(Notification.BigTextStyle().bigText(mensaje))
+        .setContentIntent(abrir)
+        .setAutoCancel(true)
+        .build()
+    runCatching { nm.notify((System.currentTimeMillis() % 100000).toInt() + 10, aviso) }
 }
 
 /** Vuelve a prender el servidor IPP cuando arranca Android, si estaba activado. */

@@ -162,7 +162,7 @@ object Usb {
             val intent = Intent(ACCION_PERMISO).setPackage(contexto.packageName)
             val pi = PendingIntent.getBroadcast(contexto, 0, intent, PendingIntent.FLAG_MUTABLE)
             usb.requestPermission(dispositivo, pi)
-            listo.await(2, TimeUnit.MINUTES)
+            listo.await(45, TimeUnit.SECONDS)
         } finally {
             contexto.unregisterReceiver(receptor)
         }
@@ -172,7 +172,12 @@ object Usb {
     fun enviar(contexto: Context, archivo: File) {
         val imp = buscar(contexto)
             ?: throw IOException("No encuentro la impresora por USB. Conectala y, si ChromeOS pregunta, elegí \"Conectar a Android\".")
-        if (!pedirPermiso(contexto, imp.dispositivo)) throw IOException("No se dio permiso para usar la impresora USB")
+        if (!pedirPermiso(contexto, imp.dispositivo)) {
+            throw IOException(
+                "Falta el permiso para usar la impresora USB. Abrí la app Impresora Xerox, elegí \"Cable USB\" " +
+                    "y tocá \"Probar conexión\"; después volvé a imprimir."
+            )
+        }
         val usb = contexto.getSystemService(Context.USB_SERVICE) as UsbManager
         val conexion = usb.openDevice(imp.dispositivo) ?: throw IOException("No se pudo abrir la impresora USB")
         try {
