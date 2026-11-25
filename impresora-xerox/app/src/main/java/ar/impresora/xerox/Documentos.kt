@@ -36,15 +36,19 @@ interface Pagina : Closeable {
     fun dibujar(destino: Bitmap, transformacion: Matrix)
 }
 
-class DocumentoPdf(contexto: Context, uri: Uri) : Documento {
-    private val descriptor: ParcelFileDescriptor =
-        contexto.contentResolver.openFileDescriptor(uri, "r")
-            ?: throw IOException("No se pudo abrir el archivo")
+class DocumentoPdf(private val descriptor: ParcelFileDescriptor) : Documento {
+    constructor(contexto: Context, uri: Uri) : this(
+        contexto.contentResolver.openFileDescriptor(uri, "r") ?: throw IOException("No se pudo abrir el archivo")
+    )
+
     private val renderer = try {
         PdfRenderer(descriptor)
     } catch (e: SecurityException) {
         descriptor.close()
         throw IOException("El PDF está protegido con contraseña")
+    } catch (e: IOException) {
+        descriptor.close()
+        throw IOException("No es un PDF válido")
     }
 
     override val cantidadDePaginas: Int get() = renderer.pageCount

@@ -30,15 +30,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # Misma clave de firma entre compilaciones, para poder actualizar la app
-      # sin desinstalarla.
-      - name: Clave de firma de depuración
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: impresora-xerox-debug-keystore
-
-      - name: Tests del codificador QPDL
+      - name: Tests (QPDL, PWG, IPP)
         run: ./gradlew --no-daemon :qpdl:test
 
       - name: Compilar APK

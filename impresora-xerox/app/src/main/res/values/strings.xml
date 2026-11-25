@@ -21,4 +21,8 @@
     <string name="bandeja_manual">Usar bandeja manual</string>
     <string name="imprimir">Imprimir</string>
     <string name="prueba">Imprimir página de prueba</string>
+    <string name="seccion_otras_apps">4. Imprimir desde otras apps</string>
+    <string name="explicacion_android">Acrobat y otras apps de Android: activá "Impresora Xerox" en los ajustes de impresión de Android. Después elegí "Xerox Phaser 3020" al tocar Imprimir.</string>
+    <string name="abrir_ajustes_impresion">Abrir ajustes de impresión de Android</string>
+    <string name="servidor_chromeos">Recibir trabajos de ChromeOS: Chrome, Google Docs, Archivos (experimental)</string>
 </resources>

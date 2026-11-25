@@ -185,5 +185,34 @@
             android:paddingTop="8dp"
             android:textIsSelectable="true"
             android:textSize="15sp" />
+
+        <!-- 4. Imprimir desde otras apps -->
+        <TextView style="@style/Seccion" android:text="@string/seccion_otras_apps" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/explicacion_android"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/btnAjustesImpresion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/abrir_ajustes_impresion" />
+
+        <CheckBox
+            android:id="@+id/cbServidor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/servidor_chromeos" />
+
+        <TextView
+            android:id="@+id/tvServidor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textIsSelectable="true"
+            android:textSize="14sp" />
     </LinearLayout>
 </ScrollView>

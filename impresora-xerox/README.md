@@ -78,8 +78,34 @@ Necesitás tener activado el entorno de Linux.
    Elegí el papel (A4, Carta, Oficio, Legal, A5), la calidad, el tóner, las
    copias y las páginas (por ejemplo `1-3,5`), y tocá **Imprimir**.
 
-> **Para imprimir una página web o un documento de Google:** usá
-> "Imprimir → Guardar como PDF" en Chrome, y después abrí ese PDF con la app.
+## Imprimir desde otras apps, sin abrir esta
+
+### Acrobat y otras apps de Android
+
+1. En la app, tocá **Abrir ajustes de impresión de Android**.
+2. Activá **Impresora Xerox**.
+3. Desde Acrobat, o cualquier app de Android, tocá **Imprimir** y elegí
+   **Xerox Phaser 3020**.
+
+### Google Docs, Chrome y Archivos (experimental)
+
+ChromeOS no deja instalar drivers. La app puede hacerse pasar por una
+impresora de red moderna (IPP Everywhere), que ChromeOS sí sabe usar:
+
+1. En la app, marcá **Recibir trabajos de ChromeOS**. Aparece una notificación
+   y la app muestra su dirección, por ejemplo `100.115.92.2:8631`.
+2. Para comprobar que ChromeOS la ve, abrí `http://<esa dirección>` en Chrome.
+   Tiene que aparecer una página que dice "La app está funcionando".
+3. Andá a **Configuración → Impresoras → Agregar impresora → Agregar
+   manualmente** y completá:
+   - **Nombre:** Phaser 3020
+   - **Dirección:** la que muestra la app (con `:8631`)
+   - **Protocolo:** IPP
+   - **Cola:** `ipp/print`
+4. Desde Google Docs o Chrome, imprimí y elegí **Phaser 3020**.
+
+La app tiene que estar instalada y el servidor activado. Arranca sola cuando se
+inicia Android.
 
 ## Estado
 
@@ -97,6 +123,7 @@ ajustar el código.
 
 | Carpeta | Qué hay |
 | --- | --- |
+| `qpdl/` (paquete `ar.impresora.ipp`) | Servidor IPP Everywhere mínimo (HTTP + IPP) y lector de PWG Raster. Probado con CUPS real: CUPS lo acepta como impresora "everywhere" y le manda PDF o PWG. |
 | `qpdl/` | Codificador QPDL en Kotlin puro: `Papel`, `PaginaBits`, `Algo0x11` (compresión), `QpdlEncoder` (PJL + páginas + bandas) y `Tramador` (paso a blanco y negro). Tiene tests que corren en cualquier PC con Java. |
 | `app/` | App Android: interfaz, lectura de PDF (`PdfRenderer`) e imágenes, página de prueba, envío por red (puerto 9100) y por USB. |
 

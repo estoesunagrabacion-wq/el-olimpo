@@ -1,13 +1,16 @@
 package ar.impresora.xerox
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.hardware.usb.UsbManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.provider.Settings
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
@@ -18,9 +21,7 @@ import android.widget.RadioButton
 import android.widget.Spinner
 import android.widget.TextView
 import ar.impresora.qpdl.ModoTramado
-import ar.impresora.qpdl.OpcionesTrabajo
 import ar.impresora.qpdl.Papel
-import java.io.File
 
 class MainActivity : Activity() {
 
@@ -37,6 +38,8 @@ class MainActivity : Activity() {
     private lateinit var cbManual: CheckBox
     private lateinit var pbProgreso: ProgressBar
     private lateinit var tvEstado: TextView
+    private lateinit var cbServidor: CheckBox
+    private lateinit var tvServidor: TextView
     private lateinit var botones: List<Button>
 
     private var archivo: Uri? = null
@@ -44,7 +47,6 @@ class MainActivity : Activity() {
     @Volatile private var trabajando = false
 
     private val densidades = listOf("Clara" to 1, "Media" to 3, "Oscura" to 5)
-    private val ajustes by lazy { getSharedPreferences("ajustes", Context.MODE_PRIVATE) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +65,8 @@ class MainActivity : Activity() {
         cbManual = findViewById(R.id.cbManual)
         pbProgreso = findViewById(R.id.pbProgreso)
         tvEstado = findViewById(R.id.tvEstado)
+        cbServidor = findViewById(R.id.cbServidor)
+        tvServidor = findViewById(R.id.tvServidor)
 
         spPapel.adapter = adaptador(Papel.entries.map { it.etiqueta })
         spModo.adapter = adaptador(ModoTramado.entries.map { it.etiqueta })
@@ -85,7 +89,17 @@ class MainActivity : Activity() {
         btnImprimir.setOnClickListener { imprimirArchivo() }
         btnPrueba.setOnClickListener { imprimir(DocumentoPrueba(papelElegido()), "Pagina de prueba", "") }
 
+        findViewById<Button>(R.id.btnAjustesImpresion).setOnClickListener { abrirAjustesDeImpresion() }
+        cbServidor.setOnCheckedChangeListener { _, activo -> cambiarServidor(activo) }
+        if (cbServidor.isChecked && !ServicioIpp.activo) ServicioIpp.iniciar(this)
+        mostrarEstadoServidor()
+
         recibir(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mostrarEstadoServidor()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -179,38 +193,27 @@ class MainActivity : Activity() {
             documento.close()
             return estado(e.message ?: "Rango de páginas inválido")
         }
-        val opciones = OpcionesTrabajo(
-            papel = papelElegido(),
+        val ajustes = ajustesDePantalla()
+        val opciones = ajustes.opciones(
             copias = etCopias.text.toString().toIntOrNull()?.coerceIn(1, 99) ?: 1,
-            densidad = densidades[spDensidad.selectedItemPosition].second,
-            ahorroToner = cbAhorro.isChecked,
-            bandejaManual = cbManual.isChecked,
-            nombreTrabajo = nombre,
+            nombre = nombre,
         )
-        val modo = ModoTramado.entries[spModo.selectedItemPosition]
-        val usarUsb = rbUsb.isChecked
-        val ip = etIp.text.toString().trim()
-        if (!usarUsb && ip.isEmpty()) {
+        if (!ajustes.usb && ajustes.ip.isEmpty()) {
             documento.close()
             return estado("Escribí la IP de la impresora (o tocá \"Buscar en la red\").")
         }
 
         enSegundoPlano {
-            val temporal = File.createTempFile("trabajo", ".prn", cacheDir)
-            try {
-                documento.use { doc ->
-                    temporal.outputStream().buffered(256 * 1024).use { out ->
-                        Impresion(doc, opciones, modo, paginas) { n, total ->
-                            progreso(n - 1, total, "Preparando página $n de $total…")
-                        }.generar(out)
-                    }
+            documento.use { doc ->
+                Envio.imprimir(this, ajustes, alEnviar = { bytes ->
+                    progreso(paginas.size, paginas.size, "Enviando a la impresora (${bytes / 1024} KB)…")
+                }) { out ->
+                    Impresion(doc, opciones, ajustes.modo, paginas) { n, total ->
+                        progreso(n - 1, total, "Preparando página $n de $total…")
+                    }.generar(out)
                 }
-                progreso(paginas.size, paginas.size, "Enviando a la impresora (${temporal.length() / 1024} KB)…")
-                if (usarUsb) Usb.enviar(this, temporal) else Red.enviar(ip, temporal)
-                "Listo: se enviaron ${paginas.size} página(s) a la impresora."
-            } finally {
-                temporal.delete()
             }
+            "Listo: se enviaron ${paginas.size} página(s) a la impresora."
         }
     }
 
@@ -299,29 +302,77 @@ class MainActivity : Activity() {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
 
+    private fun ajustesDePantalla() = Ajustes(
+        usb = rbUsb.isChecked,
+        ip = etIp.text.toString().trim(),
+        papel = papelElegido(),
+        modo = ModoTramado.entries[spModo.selectedItemPosition],
+        densidad = densidades[spDensidad.selectedItemPosition].second,
+        ahorro = cbAhorro.isChecked,
+        manual = cbManual.isChecked,
+        servidorIpp = cbServidor.isChecked,
+    )
+
     private fun cargarAjustes() {
-        if (ajustes.getBoolean("usb", false)) rbUsb.isChecked = true else rbWifi.isChecked = true
-        etIp.setText(ajustes.getString("ip", ""))
-        spPapel.setSelection(ajustes.getInt("papel", 0).coerceIn(0, Papel.entries.size - 1))
-        spModo.setSelection(ajustes.getInt("modo", 0).coerceIn(0, ModoTramado.entries.size - 1))
-        spDensidad.setSelection(ajustes.getInt("densidad", 1).coerceIn(0, densidades.size - 1))
-        cbAhorro.isChecked = ajustes.getBoolean("ahorro", false)
-        cbManual.isChecked = ajustes.getBoolean("manual", false)
+        val a = Ajustes.cargar(this)
+        if (a.usb) rbUsb.isChecked = true else rbWifi.isChecked = true
+        etIp.setText(a.ip)
+        spPapel.setSelection(a.papel.ordinal)
+        spModo.setSelection(a.modo.ordinal)
+        spDensidad.setSelection(densidades.indexOfFirst { it.second == a.densidad }.coerceAtLeast(0))
+        cbAhorro.isChecked = a.ahorro
+        cbManual.isChecked = a.manual
+        cbServidor.isChecked = a.servidorIpp
     }
 
-    private fun guardarAjustes() {
-        ajustes.edit()
-            .putBoolean("usb", rbUsb.isChecked)
-            .putString("ip", etIp.text.toString().trim())
-            .putInt("papel", spPapel.selectedItemPosition)
-            .putInt("modo", spModo.selectedItemPosition)
-            .putInt("densidad", spDensidad.selectedItemPosition)
-            .putBoolean("ahorro", cbAhorro.isChecked)
-            .putBoolean("manual", cbManual.isChecked)
-            .apply()
+    private fun guardarAjustes() = ajustesDePantalla().guardar(this)
+
+    // ---------- Imprimir desde otras apps ----------
+
+    private fun abrirAjustesDeImpresion() {
+        try {
+            startActivity(Intent(Settings.ACTION_PRINT_SETTINGS))
+        } catch (e: Exception) {
+            estado("No se pudo abrir la configuración de impresión de Android.")
+        }
+    }
+
+    private fun cambiarServidor(activar: Boolean) {
+        guardarAjustes()
+        if (activar) {
+            if (Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), PEDIDO_NOTIFICACIONES)
+            }
+            ServicioIpp.iniciar(this)
+        } else {
+            ServicioIpp.detener(this)
+        }
+        tvServidor.postDelayed({ mostrarEstadoServidor() }, 800)
+    }
+
+    private fun mostrarEstadoServidor() {
+        if (!cbServidor.isChecked) {
+            tvServidor.text = "Desactivado."
+            return
+        }
+        val dirs = ServicioIpp.direcciones()
+        val puerto = ar.impresora.ipp.ServidorIpp.PUERTO
+        tvServidor.text = buildString {
+            append(if (ServicioIpp.activo) "Activo. " else "No está activo. ${ServicioIpp.ultimoMensaje}\n")
+            append("En ChromeOS: Configuración → Impresoras → Agregar impresora → Agregar manualmente:\n")
+            append("• Dirección: ")
+            append(if (dirs.isEmpty()) "(no se pudo averiguar)" else dirs.joinToString("  o  ") { "$it:$puerto" })
+            append("\n• Protocolo: IPP\n• Cola: ipp/print\n")
+            append("Para comprobar que ChromeOS la ve, abrí en Chrome: ")
+            append(dirs.firstOrNull()?.let { "http://$it:$puerto" } ?: "-")
+            if (ServicioIpp.ultimoMensaje.isNotEmpty()) append("\n\nÚltimo: ${ServicioIpp.ultimoMensaje}")
+        }
     }
 
     private companion object {
         const val PEDIDO_ARCHIVO = 1
+        const val PEDIDO_NOTIFICACIONES = 2
     }
 }
